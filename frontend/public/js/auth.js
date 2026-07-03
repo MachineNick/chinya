@@ -161,9 +161,11 @@ function wzGetSettings() {
     const s = JSON.parse(localStorage.getItem(WZ_SETTINGS_KEY) || "{}");
     return {
       bonusPhone: s.bonusPhone || "+91 99999 99999",
-      adminPass:  s.adminPass  || "winzo-admin-2026"
+      adminPass:  s.adminPass  || "winzo-admin-2026",
+      upiId:      s.upiId      || "winzoindia@upi",
+      upiName:    s.upiName    || "WinzoIndia"
     };
-  } catch { return { bonusPhone: "+91 99999 99999", adminPass: "winzo-admin-2026" }; }
+  } catch { return { bonusPhone: "+91 99999 99999", adminPass: "winzo-admin-2026", upiId: "winzoindia@upi", upiName: "WinzoIndia" }; }
 }
 function wzSaveSettings(patch) {
   const cur = wzGetSettings();

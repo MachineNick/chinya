@@ -376,6 +376,15 @@
           </form>
         </div>
         <div class="card form-card" style="margin-top:16px;">
+          <h3 style="margin-bottom:16px;">UPI Payment Details</h3>
+          <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">Shown to users in the "Pay & Add Chips" popup.</p>
+          <form class="form" data-bind="save-upi">
+            <div class="field"><label>UPI ID (VPA)</label><input name="upiId" required value="${window.WinzoSettings.get().upiId}" placeholder="yourhandle@ybl" /></div>
+            <div class="field"><label>Payee Name</label><input name="upiName" required value="${window.WinzoSettings.get().upiName}" /></div>
+            <button class="btn btn-primary" type="submit"><i class="ph-fill ph-qr-code"></i> Save UPI</button>
+          </form>
+        </div>
+        <div class="card form-card" style="margin-top:16px;">
           <h3 style="margin-bottom:16px;">Admin Passcode</h3>
           <form class="form" data-bind="save-pass">
             <div class="field"><label>New Passcode</label><input name="pass" required minlength="6" /></div>
@@ -459,6 +468,9 @@
       }),
       "save-phone": (form) => form.addEventListener("submit", (e) => {
         e.preventDefault(); window.WinzoSettings.save({ bonusPhone: form.phone.value.trim() }); window.WinzoAuth.toast("Phone updated.", "success");
+      }),
+      "save-upi": (form) => form.addEventListener("submit", (e) => {
+        e.preventDefault(); window.WinzoSettings.save({ upiId: form.upiId.value.trim(), upiName: form.upiName.value.trim() }); window.WinzoAuth.toast("UPI details updated.", "success");
       }),
       "save-pass": (form) => form.addEventListener("submit", (e) => {
         e.preventDefault(); window.WinzoSettings.save({ adminPass: form.pass.value }); window.WinzoAuth.toast("Passcode updated.", "success");
