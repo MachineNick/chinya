@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile — WinzoIndia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-testid="profile-page">
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand"><div class="brand-mark">W</div><div class="brand-name">Winzo<span>India</span></div></a>
+      <ul class="nav-links">
+        <li><a href="dashboard.html">Lobby</a></li>
+        <li><a href="ludo.html">Ludo</a></li>
+        <li><a href="snake-ladder.html">Snake &amp; Ladder</a></li>
+        <li><a href="profile.html" class="active">Profile</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="dashboard.html" class="btn btn-secondary"><i class="ph ph-house"></i> Dashboard</a>
+        <a href="#" id="logout-btn" class="btn btn-primary" data-testid="profile-logout-btn">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="profile-shell">
+    <div class="card profile-header" data-testid="profile-header">
+      <div class="avatar" style="background-image:url('https://images.pexels.com/photos/3777943/pexels-photo-3777943.jpeg')"></div>
+      <div class="profile-meta">
+        <h1 data-testid="profile-name">—</h1>
+        <span data-testid="profile-email">—</span>
+        <div>
+          <span id="kyc-badge" class="kyc-badge" data-testid="profile-kyc-badge">
+            <i class="ph-fill ph-check-circle"></i> KYC Verified
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title" style="margin-bottom:16px;">
+        <h2 style="font-size:1.2rem;">Account Details</h2>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><span>Full Name</span><strong data-testid="info-fullname">—</strong></div>
+        <div class="info-item"><span>Phone</span><strong data-testid="info-phone">—</strong></div>
+        <div class="info-item"><span>Email</span><strong data-testid="info-email">—</strong></div>
+        <div class="info-item"><span>KYC Document</span><strong data-testid="info-kyc-type">—</strong></div>
+        <div class="info-item"><span>Wallet Balance</span><strong data-testid="info-wallet" style="color:var(--accent);">₹0</strong></div>
+        <div class="info-item"><span>Member Since</span><strong data-testid="info-since">—</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-bottom:16px;">
+        <h2 style="font-size:1.2rem;">KYC Document</h2>
+      </div>
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px;">
+        Your uploaded document is stored securely. Only compliance officers can view it.
+      </p>
+      <a id="kyc-view" href="#" target="_blank" rel="noopener" class="btn btn-secondary" data-testid="view-kyc-btn">
+        <i class="ph ph-file-magnifying-glass"></i> View Uploaded Document
+      </a>
+    </div>
+  </main>
+
+  <footer class="footer"><div class="container"><p><strong>WinzoIndia</strong> · Play responsibly.</p></div></footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const session = window.WinzoAuth.requireAuth();
+    if (session) {
+      const kycLabels = { aadhaar: "Aadhaar Card", pan: "PAN Card", dl: "Driving Licence", passport: "Passport" };
+      document.querySelector("[data-testid='profile-name']").textContent = session.fullName;
+      document.querySelector("[data-testid='profile-email']").textContent = session.email;
+      document.querySelector("[data-testid='info-fullname']").textContent = session.fullName;
+      document.querySelector("[data-testid='info-phone']").textContent = session.phone;
+      document.querySelector("[data-testid='info-email']").textContent = session.email;
+      document.querySelector("[data-testid='info-kyc-type']").textContent = kycLabels[session.kycType] || "—";
+      document.querySelector("[data-testid='info-wallet']").textContent = wzFormatINR(session.wallet || 0);
+      document.querySelector("[data-testid='info-since']").textContent = new Date(session.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
+      const badge = document.getElementById("kyc-badge");
+      if (!session.kycVerified) {
+        badge.classList.add("pending");
+        badge.innerHTML = '<i class="ph-fill ph-clock"></i> KYC Pending';
+      }
+      const kycView = document.getElementById("kyc-view");
+      if (session.kycUrl) kycView.href = session.kycUrl;
+      else {
+        kycView.classList.add("btn-secondary");
+        kycView.addEventListener("click", (e) => {
+          e.preventDefault();
+          window.WinzoAuth.toast("No KYC document on file.", "error");
+        });
+      }
+    }
+  </script>
+</body>
+</html>

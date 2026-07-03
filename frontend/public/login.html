@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in — WinzoIndia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="auth-shell" data-testid="login-page">
+    <aside class="auth-visual">
+      <div class="auth-visual-content">
+        <span class="eyebrow">Welcome back, Champion</span>
+        <h2>Your throne is waiting.</h2>
+        <p>Sign in to jump straight into live tournaments, claim daily rewards and cash out your winnings instantly.</p>
+      </div>
+    </aside>
+
+    <section class="auth-form-wrap">
+      <a href="index.html" class="brand" style="margin-bottom:32px;">
+        <div class="brand-mark">W</div>
+        <div class="brand-name">Winzo<span>India</span></div>
+      </a>
+
+      <div class="auth-header">
+        <h1>Sign in</h1>
+        <p>Enter your credentials to access your gaming vault.</p>
+      </div>
+
+      <div id="login-error" class="form-error" data-testid="login-error"></div>
+
+      <form id="login-form" class="form" data-testid="login-form" novalidate>
+        <div class="field">
+          <label for="identifier">Email or Phone</label>
+          <input id="identifier" name="identifier" type="text" placeholder="you@winzo.in or +91 98xxxxxxxx" required data-testid="login-identifier-input" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="•••••••••••" required minlength="6" data-testid="login-password-input" />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" data-testid="login-submit-btn">
+          <i class="ph-fill ph-sign-in"></i> Sign in
+        </button>
+
+        <p class="auth-footer">
+          New to WinzoIndia? <a href="signup.html" data-testid="link-to-signup">Create an account</a>
+        </p>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    window.WinzoAuth.redirectIfAuthed();
+    const form = document.getElementById("login-form");
+    const errBox = document.getElementById("login-error");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errBox.style.display = "none";
+      const identifier = form.identifier.value.trim();
+      const password = form.password.value;
+      try {
+        await window.WinzoAuth.login(identifier, password);
+        window.WinzoAuth.toast("Welcome back!", "success");
+        setTimeout(() => window.location.href = "dashboard.html", 500);
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — WinzoIndia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-testid="dashboard-page">
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand">
+        <div class="brand-mark">W</div>
+        <div class="brand-name">Winzo<span>India</span></div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="dashboard.html" class="active">Lobby</a></li>
+        <li><a href="ludo.html">Ludo</a></li>
+        <li><a href="snake-ladder.html">Snake &amp; Ladder</a></li>
+        <li><a href="profile.html">Profile</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="profile.html" class="btn btn-secondary" data-testid="nav-profile-link">
+          <i class="ph ph-user-circle"></i> <span data-user-name>Player</span>
+        </a>
+        <a href="#" id="logout-btn" class="btn btn-primary" data-testid="logout-btn">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="container dash-hero">
+    <div class="wallet-card" data-testid="wallet-card">
+      <div>
+        <div class="wallet-label">Total Balance</div>
+        <div class="wallet-balance" data-testid="dashboard-wallet-balance" id="wallet-balance">₹0</div>
+        <p style="color:var(--text-secondary);font-size:14px;margin-top:8px;">
+          <i class="ph ph-shield-check"></i>
+          <span id="kyc-summary">KYC Verified · Withdrawal Enabled</span>
+        </p>
+      </div>
+      <div class="wallet-actions">
+        <button class="btn btn-secondary" data-testid="btn-deposit"><i class="ph ph-plus-circle"></i> Deposit</button>
+        <button class="btn btn-primary" data-testid="btn-withdraw"><i class="ph-fill ph-lightning"></i> Withdraw</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="container">
+    <div class="promo" data-testid="promo-banner">
+      <div>
+        <span class="eyebrow">Limited Offer</span>
+        <h3>Weekly Mega Tournament · ₹2,50,000 prize pool</h3>
+        <p>Entry starts at ₹49. Top 500 players win. Registration closes Friday 8:00 PM IST.</p>
+      </div>
+      <a href="ludo.html" class="btn btn-primary" data-testid="promo-join-btn"><i class="ph-fill ph-trophy"></i> Join Tournament</a>
+    </div>
+  </section>
+
+  <section class="container games-section">
+    <div class="section-title">
+      <h2>Signature Games</h2>
+      <span>Play live · win instantly</span>
+    </div>
+    <div class="game-grid" data-testid="game-grid">
+      <a href="ludo.html" class="game-card" data-testid="game-card-ludo">
+        <div class="game-card-img" style="background-image:url('https://images.pexels.com/photos/11646952/pexels-photo-11646952.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940')">
+          <span class="game-tag">Featured</span>
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-info">
+            <h3>Ludo Royale</h3>
+            <span>4-Player · Live Tournament</span>
+          </div>
+          <div class="game-fee">₹10 · ₹50 · ₹500</div>
+        </div>
+      </a>
+      <a href="snake-ladder.html" class="game-card" data-testid="game-card-snake">
+        <div class="game-card-img" style="background-image:url('https://images.pexels.com/photos/20152634/pexels-photo-20152634.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940')">
+          <span class="game-tag">Hot</span>
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-info">
+            <h3>Snake &amp; Ladder</h3>
+            <span>Fast Match · Skill-Boost</span>
+          </div>
+          <div class="game-fee">₹5 · ₹25 · ₹100</div>
+        </div>
+      </a>
+      <div class="game-card" data-testid="game-card-comingsoon" style="cursor:default;">
+        <div class="game-card-img" style="background:linear-gradient(135deg,#1a1a26,#0f0f16);display:flex;align-items:center;justify-content:center;">
+          <i class="ph ph-lock-key" style="font-size:48px;color:var(--text-muted);"></i>
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-info">
+            <h3>Carrom Kings</h3>
+            <span>Launching February 2026</span>
+          </div>
+          <div class="game-fee">Coming Soon</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="container games-section">
+    <div class="section-title">
+      <h2>Your Stats</h2>
+      <span>Last 30 days</span>
+    </div>
+    <div class="features-grid">
+      <div class="card feature">
+        <div class="feature-icon"><i class="ph-fill ph-game-controller"></i></div>
+        <h3>0 <span style="font-size:14px;color:var(--text-secondary);">Matches Played</span></h3>
+      </div>
+      <div class="card feature">
+        <div class="feature-icon"><i class="ph-fill ph-trophy"></i></div>
+        <h3>0 <span style="font-size:14px;color:var(--text-secondary);">Wins</span></h3>
+      </div>
+      <div class="card feature">
+        <div class="feature-icon"><i class="ph-fill ph-chart-line-up"></i></div>
+        <h3>0% <span style="font-size:14px;color:var(--text-secondary);">Win Rate</span></h3>
+      </div>
+      <div class="card feature">
+        <div class="feature-icon"><i class="ph-fill ph-medal"></i></div>
+        <h3>Rookie <span style="font-size:14px;color:var(--text-secondary);">Current Rank</span></h3>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p><strong>WinzoIndia</strong> · Play responsibly. 18+ only.</p>
+    </div>
+  </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const session = window.WinzoAuth.requireAuth();
+    if (session) {
+      document.getElementById("wallet-balance").textContent = wzFormatINR(session.wallet || 0);
+      document.querySelectorAll("[data-user-name]").forEach(el => el.textContent = session.fullName.split(" ")[0]);
+      const kyc = document.getElementById("kyc-summary");
+      if (!session.kycVerified) kyc.textContent = "KYC Pending · Complete verification to withdraw";
+    }
+    document.querySelectorAll("[data-testid='btn-deposit'], [data-testid='btn-withdraw']").forEach(b =>
+      b.addEventListener("click", () => window.WinzoAuth.toast("Payment gateway coming soon.", "info"))
+    );
+  </script>
+</body>
+</html>
