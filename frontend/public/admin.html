@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — WinzoIndia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-testid="admin-page">
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand">
+        <div class="brand-mark">W</div>
+        <div class="brand-name">Winzo<span>India</span></div>
+      </a>
+      <div class="nav-actions">
+        <span style="color:var(--danger);font-family:var(--font-head);font-weight:700;letter-spacing:2px;font-size:12px;">ADMIN CONSOLE</span>
+        <a href="dashboard.html" class="btn btn-secondary"><i class="ph ph-house"></i> Exit</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- GATE -->
+  <div id="admin-gate" class="admin-shell" style="display:block;">
+    <div class="card admin-gate" data-testid="admin-gate">
+      <h1 style="font-size:1.6rem;margin-bottom:8px;">Admin Access</h1>
+      <p style="color:var(--text-secondary);margin-bottom:24px;font-size:14px;">Enter the admin passcode to continue.</p>
+      <form id="gate-form" class="form">
+        <div class="field">
+          <label for="passcode">Passcode</label>
+          <input id="passcode" type="password" required data-testid="admin-passcode-input" placeholder="••••••••••" />
+          <span class="hint">Default: <code>winzo-admin-2026</code> — change it from Settings after login.</span>
+        </div>
+        <div id="gate-error" class="form-error" data-testid="admin-gate-error"></div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit" data-testid="admin-login-btn"><i class="ph-fill ph-lock-open"></i> Unlock</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONSOLE -->
+  <main id="admin-main" class="admin-shell" style="display:none;">
+    <h1 style="margin-bottom:6px;">Admin Console</h1>
+    <p style="color:var(--text-secondary);margin-bottom:24px;">Manually manage user chips, moderate reports, review challenges &amp; edit contact settings.</p>
+
+    <div class="admin-tabs" data-testid="admin-tabs">
+      <button data-tab="users" class="active">Users &amp; Chips</button>
+      <button data-tab="reports">Reports</button>
+      <button data-tab="sets">Open Sets</button>
+      <button data-tab="settings">Settings</button>
+    </div>
+
+    <!-- USERS -->
+    <section id="tab-users">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="admin-table" data-testid="users-table">
+          <thead>
+            <tr><th>Name</th><th>Phone</th><th>Email</th><th>KYC</th><th>Chips</th><th>Add</th></tr>
+          </thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section id="tab-reports" style="display:none;">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="admin-table" data-testid="reports-table">
+          <thead>
+            <tr><th>Reporter</th><th>Opponent</th><th>Details</th><th>Proof</th><th>Status</th><th>Action</th></tr>
+          </thead>
+          <tbody id="reports-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETS -->
+    <section id="tab-sets" style="display:none;">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="admin-table" data-testid="sets-table">
+          <thead>
+            <tr><th>Player</th><th>Game</th><th>Value</th><th>Status</th><th>Accepted By</th><th>Action</th></tr>
+          </thead>
+          <tbody id="sets-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="tab-settings" style="display:none;">
+      <div class="card settings-card" data-testid="settings-card">
+        <h3 style="margin-bottom:6px;">Bonus Contact Phone</h3>
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">Shown on user dashboard beside the "Bonus add karwane" text.</p>
+        <form id="phone-form" class="settings-row">
+          <div class="field">
+            <label>Phone Number</label>
+            <input id="setBonusPhone" type="text" required data-testid="admin-phone-input" />
+          </div>
+          <button class="btn btn-primary" type="submit" data-testid="save-phone-btn"><i class="ph-fill ph-floppy-disk"></i> Save</button>
+        </form>
+      </div>
+      <div class="card settings-card">
+        <h3 style="margin-bottom:6px;">Admin Passcode</h3>
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;">Change the passcode used to unlock this console.</p>
+        <form id="pass-form" class="settings-row">
+          <div class="field">
+            <label>New Passcode</label>
+            <input id="setPass" type="text" required minlength="6" data-testid="admin-newpass-input" />
+          </div>
+          <button class="btn btn-primary" type="submit" data-testid="save-pass-btn"><i class="ph-fill ph-key"></i> Update</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const GATE_KEY = "winzo_admin_unlocked";
+    const gate = document.getElementById("admin-gate");
+    const main = document.getElementById("admin-main");
+    const errBox = document.getElementById("gate-error");
+
+    function unlockUI() { gate.style.display = "none"; main.style.display = "block"; renderAll(); }
+
+    if (sessionStorage.getItem(GATE_KEY) === "1") unlockUI();
+
+    document.getElementById("gate-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const settings = window.WinzoSettings.get();
+      if (document.getElementById("passcode").value === settings.adminPass) {
+        sessionStorage.setItem(GATE_KEY, "1");
+        unlockUI();
+      } else {
+        errBox.textContent = "Incorrect passcode.";
+        errBox.style.display = "block";
+      }
+    });
+
+    // ---- Tabs ----
+    document.querySelectorAll(".admin-tabs button").forEach(b => {
+      b.addEventListener("click", () => {
+        document.querySelectorAll(".admin-tabs button").forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+        ["users","reports","sets","settings"].forEach(t => {
+          document.getElementById("tab-" + t).style.display = (t === b.dataset.tab) ? "block" : "none";
+        });
+      });
+    });
+
+    // ---- Helpers ----
+    const GAME_LABELS = { full:"Full Game","1goti":"1 Goti","2goti":"2 Goti","3goti":"3 Goti",ulta:"Ulta","1six":"1 Six",snake:"Snake & Lader" };
+    const KYC_LABELS  = { aadhaar:"Aadhaar", pan:"PAN", dl:"DL", passport:"Passport" };
+
+    function renderUsers() {
+      const users = window.WinzoAuth.getUsers();
+      const body  = document.getElementById("users-body");
+      if (!users.length) { body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No users yet.</td></tr>`; return; }
+      body.innerHTML = users.map((u, i) => `
+        <tr data-testid="user-row-${i}">
+          <td><strong>${u.fullName}</strong></td>
+          <td>${u.phone}</td>
+          <td>${u.email}</td>
+          <td>${KYC_LABELS[u.kycType] || "—"}</td>
+          <td><strong>${Number(u.chips || 0).toLocaleString("en-IN")}</strong></td>
+          <td>
+            <input class="chip-input" type="number" min="1" placeholder="+ amt" data-uid="${u.uid}" data-testid="chip-input-${i}" />
+            <button class="btn btn-primary" style="padding:8px 14px;font-size:12px;" data-add="${u.uid}" data-testid="add-chips-${i}"><i class="ph ph-plus"></i> Add</button>
+          </td>
+        </tr>`).join("");
+      body.querySelectorAll("[data-add]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const uid = btn.dataset.add;
+          const input = body.querySelector(`.chip-input[data-uid='${uid}']`);
+          const amt = Number(input.value);
+          if (!amt || amt < 1) return;
+          const users = window.WinzoAuth.getUsers();
+          const u = users.find(x => x.uid === uid);
+          if (!u) return;
+          u.chips = Number(u.chips || 0) + amt;
+          window.WinzoAuth.saveUsers(users);
+          renderUsers();
+        });
+      });
+    }
+
+    function renderReports() {
+      const reports = window.WinzoReports.get();
+      const body = document.getElementById("reports-body");
+      if (!reports.length) { body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No reports.</td></tr>`; return; }
+      body.innerHTML = reports.slice().reverse().map((r, i) => `
+        <tr data-testid="report-row-${i}">
+          <td><strong>${r.reporterName}</strong></td>
+          <td>${r.opponent}</td>
+          <td style="max-width:280px;">${r.details}</td>
+          <td><a href="${r.proofUrl}" target="_blank" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" data-testid="view-proof-${i}"><i class="ph ph-image"></i> View</a></td>
+          <td>${r.status === "rewarded"
+              ? '<span style="color:var(--success);font-weight:500;">Rewarded</span>'
+              : '<span style="color:var(--accent);">Pending</span>'}</td>
+          <td>
+            ${r.status === "pending"
+              ? `<button class="btn btn-primary" style="padding:8px 14px;font-size:12px;" data-reward="${r.id}" data-testid="reward-btn-${i}"><i class="ph-fill ph-gift"></i> Reward (+100 chips)</button>`
+              : ""}
+          </td>
+        </tr>`).join("");
+      body.querySelectorAll("[data-reward]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const rid = btn.dataset.reward;
+          const reports = window.WinzoReports.get();
+          const r = reports.find(x => x.id === rid);
+          if (!r) return;
+          const users = window.WinzoAuth.getUsers();
+          const u = users.find(x => x.uid === r.reporterUid);
+          if (u) { u.chips = Number(u.chips || 0) + 100; window.WinzoAuth.saveUsers(users); }
+          r.status = "rewarded";
+          window.WinzoReports.save(reports);
+          renderReports();
+          renderUsers();
+        });
+      });
+    }
+
+    function renderSetsAdmin() {
+      const sets = window.WinzoSets.get();
+      const body = document.getElementById("sets-body");
+      if (!sets.length) { body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No open sets.</td></tr>`; return; }
+      body.innerHTML = sets.slice().reverse().map((s, i) => `
+        <tr>
+          <td>${s.byName}</td>
+          <td><strong>${GAME_LABELS[s.gameType]}</strong></td>
+          <td>₹${Number(s.value).toLocaleString("en-IN")}</td>
+          <td>${s.acceptedBy ? '<span style="color:var(--success);">Matched</span>' : '<span style="color:var(--accent);">Open</span>'}</td>
+          <td>${s.acceptedByName || "—"}</td>
+          <td><button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" data-del="${s.id}"><i class="ph ph-trash"></i> Delete</button></td>
+        </tr>`).join("");
+      body.querySelectorAll("[data-del]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const sid = btn.dataset.del;
+          window.WinzoSets.save(window.WinzoSets.get().filter(s => s.id !== sid));
+          renderSetsAdmin();
+        });
+      });
+    }
+
+    function renderSettings() {
+      const s = window.WinzoSettings.get();
+      document.getElementById("setBonusPhone").value = s.bonusPhone;
+      document.getElementById("setPass").value = "";
+    }
+    document.getElementById("phone-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      window.WinzoSettings.save({ bonusPhone: document.getElementById("setBonusPhone").value.trim() });
+      window.WinzoAuth.toast("Bonus phone updated.", "success");
+    });
+    document.getElementById("pass-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      window.WinzoSettings.save({ adminPass: document.getElementById("setPass").value });
+      window.WinzoAuth.toast("Admin passcode updated.", "success");
+    });
+
+    function renderAll() { renderUsers(); renderReports(); renderSetsAdmin(); renderSettings(); }
+  </script>
+</body>
+</html>

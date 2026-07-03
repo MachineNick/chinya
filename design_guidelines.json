@@ -1,0 +1,133 @@
+{
+  "theme": "Dark",
+  "archetype": "High-End Gaming / Neon-Noir",
+  "design_philosophy": "A bold, futuristic, and professional gaming platform. Combines deep matte blacks with neon gold accents. Strict avoidance of generic purple/teal tech themes. Prioritizes sharp edges, high contrast, and a 'tactical' feeling of high stakes and real money.",
+  "typography": {
+    "headings": {
+      "family": "'Unbounded', sans-serif",
+      "import_url": "https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&display=swap",
+      "weights": [700, 900],
+      "usage": "H1-H6, brand name, and key metrics (wallet balance)"
+    },
+    "body": {
+      "family": "'Outfit', sans-serif",
+      "import_url": "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap",
+      "weights": [300, 400, 500],
+      "usage": "Paragraphs, form labels, small text, and standard UI elements"
+    }
+  },
+  "colors": {
+    "background_base": "#0A0A0F",
+    "background_surface": "#14141C",
+    "background_glass": "rgba(20, 20, 28, 0.75)",
+    "primary_accent": "#FFD700",
+    "primary_accent_hover": "#E6C200",
+    "success_neon": "#00E676",
+    "danger_red": "#FF3B30",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A1A1AA",
+    "border_subtle": "rgba(255, 255, 255, 0.1)",
+    "border_active": "rgba(255, 215, 0, 0.5)"
+  },
+  "layout_spacing": {
+    "grid_system": "12-column CSS Grid, max-width 1280px, center-aligned",
+    "gap_large": "32px",
+    "gap_medium": "16px",
+    "gap_small": "8px",
+    "padding_section": "80px 24px",
+    "padding_card": "24px",
+    "border_radius_standard": "4px",
+    "border_radius_large": "8px"
+  },
+  "components": {
+    "buttons": {
+      "primary": "Background #FFD700, Text #000000, Font 'Unbounded' bold, sharp borders (radius 4px), hover effect: drop-shadow 0 0 12px rgba(255, 215, 0, 0.4) and transform translate-y -2px. transition: all 0.2s ease.",
+      "secondary": "Background transparent, Border 1px solid rgba(255, 255, 255, 0.2), Text #FFFFFF, hover effect: border #FFD700, text #FFD700."
+    },
+    "cards": {
+      "style": "Glassmorphism. Background rgba(20,20,28,0.7), backdrop-filter blur(16px). Border 1px solid rgba(255,255,255,0.05). Add a subtle inner light via box-shadow: inset 0 1px 0 rgba(255,255,255,0.1).",
+      "hover_state": "Border glows to rgba(255,215,0,0.3) and slight scale-up (transform: scale(1.02))."
+    },
+    "forms": {
+      "inputs": "Background #0F0F16, Border 1px solid rgba(255,255,255,0.1), padding 16px, text #FFFFFF, placeholder #A1A1AA. Focus state: Border #FFD700, outline none, box-shadow 0 0 0 2px rgba(255,215,0,0.2).",
+      "labels": "Font Outfit 14px, uppercase, tracking 1px, color #A1A1AA, margin-bottom 8px.",
+      "file_upload": "Dashed border (2px dashed rgba(255,255,255,0.2)), background rgba(20,20,28,0.5), padding 32px, text-align center, cursor pointer. Hover state changes border to dashed #FFD700."
+    },
+    "navigation": {
+      "style": "Sticky top, height 80px, glassmorphism background (rgba(10,10,15,0.8), blur 20px), border-bottom 1px solid rgba(255,255,255,0.05). Flexbox layout: Logo left, Links center, CTA/Profile right."
+    }
+  },
+  "pages": {
+    "landing_page": {
+      "hero": "Center-aligned text overlaying a high-contrast abstract neon gold gaming background. H1 'PLAY. WIN. CONQUER.' in Unbounded 64px. Subtitle in Outfit 20px. Massive primary CTA button. Overlay must be rgba(10,10,15,0.85) gradient to ensure text readability.",
+      "features": "Bento grid layout showcasing 'Fair Play', 'Instant Withdrawals', 'Secure KYC'."
+    },
+    "signup_login": {
+      "layout": "CSS Grid 2-column on desktop. Left column: Image of a person playing on a smartphone, 100% height, object-fit cover, with a subtle dark overlay. Right column: Centered form container (max-width 400px).",
+      "signup_specifics": "Includes inputs for Full Name, Phone, Email, Password, KYC Document Type (Select dropdown: Aadhaar, PAN, DL, Passport), and a File Upload zone."
+    },
+    "dashboard": {
+      "layout": "Solid top nav. Main content area: Grid layout.",
+      "wallet_card": "Prominent top card. Background gradient from #14141C to #1A1A00. Large balance text in Unbounded, neon gold color.",
+      "game_grid": "CSS Grid (repeat auto-fit, minmax(300px, 1fr)). Cards for Ludo and Snake & Ladder displaying the game image, entry fee, and 'Play Now' button."
+    },
+    "game_view": {
+      "layout": "2-column layout. Left: Large visualization of the board game image with a sleek border. Right: Game details, current active players list, and an 'Enter Match' CTA."
+    },
+    "profile": {
+      "layout": "Single column, max-width 800px center. Top section: Avatar image, User Name, and a 'KYC Verified' badge in success_neon (#00E676) with a check icon. Below: Details and history."
+    }
+  },
+  "micro_interactions": {
+    "hover_states": "All interactive elements must change state in 0.2s. Buttons lift up (-2px), cards glow borders.",
+    "focus_states": "Forms must explicitly highlight the active input field with a gold ring.",
+    "loading": "Use a subtle pulsing neon gold border for loading states."
+  },
+  "media": {
+    "icons": {
+      "library": "Phosphor Icons",
+      "cdn_link": "<script src=\"https://unpkg.com/@phosphor-icons/web\"></script>",
+      "usage_example": "<i class=\"ph ph-wallet\"></i>"
+    },
+    "image_urls": {
+      "landing_hero_bg": {
+        "url": "https://images.unsplash.com/photo-1763926444206-50468b00986c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMG5lb24lMjBnb2xkJTIwZ2FtaW5nJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3ODIwMjE4MDJ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract neon gold geometric shapes, perfect for the hero background with a heavy dark overlay."
+      },
+      "auth_side_image": {
+        "url": "https://images.pexels.com/photos/7915523/pexels-photo-7915523.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Man playing a video game on a smartphone, focused. For the left side of login/signup pages."
+      },
+      "ludo_board": {
+        "url": "https://images.pexels.com/photos/11646952/pexels-photo-11646952.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Close up of a vibrant Ludo game board. Use in Dashboard cards and Game View page."
+      },
+      "snake_ladder_board": {
+        "url": "https://images.pexels.com/photos/20152634/pexels-photo-20152634.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Checkered Snake and Ladders board game. Use in Dashboard cards and Game View page."
+      },
+      "profile_avatar": {
+        "url": "https://images.pexels.com/photos/3777943/pexels-photo-3777943.jpeg",
+        "description": "Smiling person avatar for the profile page."
+      }
+    }
+  },
+  "testing_attributes": {
+    "rules": "All interactive and key informational elements MUST include a 'data-testid' attribute.",
+    "examples": [
+      "data-testid='login-submit-button'",
+      "data-testid='signup-kyc-upload'",
+      "data-testid='dashboard-wallet-balance'",
+      "data-testid='game-card-ludo'"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build standard, semantically correct HTML5, CSS3, and Vanilla JavaScript (No React, No Tailwind).",
+    "Use CSS Variables (:root) to define the color palette, fonts, and spacing for maintainability.",
+    "Implement Firebase Web SDK in the JS files for authentication and storage functionality. Initialize Firebase using standard configuration object.",
+    "Ensure all input fields, buttons, and crucial data containers have 'data-testid' attributes.",
+    "Apply 'glassmorphism' correctly using CSS backdrop-filter and semi-transparent backgrounds.",
+    "Inject the Phosphor icons script in the <head> of every HTML file.",
+    "Strictly follow the Dark/Gold aesthetic. Do not introduce off-brand colors like purple or teal."
+  ]
+}

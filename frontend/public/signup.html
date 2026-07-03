@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create Account — WinzoIndia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="auth-shell" data-testid="signup-page">
+    <aside class="auth-visual">
+      <div class="auth-visual-content">
+        <span class="eyebrow">Join The Arena</span>
+        <h2>Sign up. Verify. Play in 90 seconds.</h2>
+        <p>Complete a quick KYC to unlock cash tournaments, welcome bonus of ₹500 and lightning-fast withdrawals.</p>
+      </div>
+    </aside>
+
+    <section class="auth-form-wrap">
+      <a href="index.html" class="brand" style="margin-bottom:24px;">
+        <div class="brand-mark">W</div>
+        <div class="brand-name">Winzo<span>India</span></div>
+      </a>
+
+      <div class="auth-header">
+        <h1>Create your account</h1>
+        <p>Fill in your details and upload one valid ID for KYC verification.</p>
+      </div>
+
+      <div id="signup-error" class="form-error" data-testid="signup-error"></div>
+
+      <form id="signup-form" class="form" data-testid="signup-form" novalidate>
+        <div class="field">
+          <label for="fullName">Full Name</label>
+          <input id="fullName" name="fullName" type="text" placeholder="Arjun Sharma" required data-testid="signup-fullname-input" />
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="phone">Phone Number</label>
+            <input id="phone" name="phone" type="tel" placeholder="+91 98xxxxxxxx" required pattern="^[+0-9\s\-]{8,15}$" data-testid="signup-phone-input" />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="arjun@example.com" required data-testid="signup-email-input" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="At least 6 characters" required minlength="6" data-testid="signup-password-input" />
+        </div>
+
+        <div class="field">
+          <label for="kycType">KYC Document Type</label>
+          <select id="kycType" name="kycType" required data-testid="signup-kyc-type">
+            <option value="">Choose a document…</option>
+            <option value="aadhaar">Aadhaar Card</option>
+            <option value="pan">PAN Card</option>
+            <option value="dl">Driving Licence</option>
+            <option value="passport">Passport</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Upload Document</label>
+          <label class="file-drop" for="kycFile" id="kyc-drop" data-testid="signup-kyc-upload">
+            <i class="ph ph-cloud-arrow-up"></i>
+            <p><strong>Click to upload</strong> or drag &amp; drop</p>
+            <p class="hint">JPG, PNG or PDF · Max 5 MB · Encrypted &amp; stored securely</p>
+            <input id="kycFile" name="kycFile" type="file" accept=".jpg,.jpeg,.png,.pdf" required />
+          </label>
+          <div id="kyc-file-info" class="file-info" data-testid="kyc-file-info"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" data-testid="signup-submit-btn">
+          <i class="ph-fill ph-rocket-launch"></i> Create Account
+        </button>
+
+        <p class="auth-footer">
+          Already have an account? <a href="login.html" data-testid="link-to-login">Sign in</a>
+        </p>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    window.WinzoAuth.redirectIfAuthed();
+
+    const form = document.getElementById("signup-form");
+    const errBox = document.getElementById("signup-error");
+    const drop = document.getElementById("kyc-drop");
+    const fileInput = document.getElementById("kycFile");
+    const fileInfo = document.getElementById("kyc-file-info");
+
+    ["dragenter","dragover"].forEach(ev =>
+      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("dragover"); })
+    );
+    ["dragleave","drop"].forEach(ev =>
+      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("dragover"); })
+    );
+    drop.addEventListener("drop", e => {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        fileInput.files = e.dataTransfer.files;
+        showFile(fileInput.files[0]);
+      }
+    });
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files[0]) showFile(fileInput.files[0]);
+    });
+    function showFile(f) {
+      const sizeMB = (f.size / (1024*1024)).toFixed(2);
+      fileInfo.textContent = `✓ ${f.name} (${sizeMB} MB) ready to upload`;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errBox.style.display = "none";
+      const file = fileInput.files[0];
+      if (!file) {
+        errBox.textContent = "Please upload a KYC document.";
+        errBox.style.display = "block";
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        errBox.textContent = "File must be under 5 MB.";
+        errBox.style.display = "block";
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph ph-spinner"></i> Creating account…';
+      try {
+        await window.WinzoAuth.signup({
+          fullName: form.fullName.value.trim(),
+          phone: form.phone.value.trim(),
+          email: form.email.value.trim(),
+          password: form.password.value,
+          kycType: form.kycType.value,
+          kycFile: file
+        });
+        window.WinzoAuth.toast("Account created! Welcome ₹500 bonus added.", "success");
+        setTimeout(() => window.location.href = "dashboard.html", 700);
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.style.display = "block";
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph-fill ph-rocket-launch"></i> Create Account';
+      }
+    });
+  </script>
+</body>
+</html>
