@@ -33,17 +33,15 @@
     </div>
   </nav>
 
-  <!-- USER HERO: Icon + Bonus contact text -->
+  <!-- USER HERO -->
   <section class="container" style="padding-top:32px;">
     <div class="user-hero card" data-testid="user-hero">
-      <div class="user-avatar-lg" data-testid="user-avatar">
-        <i class="ph-fill ph-user"></i>
-      </div>
-      <h1 data-testid="user-hero-name" style="margin-top:16px;">Welcome, <span data-user-name style="color:var(--accent);">Player</span></h1>
+      <div class="user-avatar-lg"><i class="ph-fill ph-user"></i></div>
+      <h1 style="margin-top:16px;">Welcome, <span data-user-name style="color:var(--accent);">Player</span></h1>
       <p class="bonus-line" data-testid="bonus-contact">
         <i class="ph-fill ph-phone-call"></i>
         Bonus add karwane ke lie contact kare
-        <a href="tel:+919999999999" class="bonus-phone" data-testid="bonus-phone">+91 99999 99999</a>
+        <a id="bonus-phone-link" href="#" class="bonus-phone" data-testid="bonus-phone">+91 99999 99999</a>
       </p>
     </div>
   </section>
@@ -53,32 +51,35 @@
     <div class="wallet-chips-card" data-testid="wallet-chips-card">
       <div class="wallet-chips-head">
         <span class="eyebrow"><i class="ph-fill ph-poker-chip"></i> Wallet Chips</span>
-        <span class="tag-manual" data-testid="chips-manual-tag">Manually added by admin</span>
+        <span class="tag-manual">Manually added by admin</span>
       </div>
       <div class="wallet-chips-value" data-testid="wallet-chips-value" id="wallet-chips">0</div>
       <p class="wallet-chips-note">Chips are added by our admin after successful deposit confirmation.</p>
     </div>
   </section>
 
-  <!-- DISCLAIMER -->
+  <!-- DISCLAIMER + Report -->
   <section class="container" style="padding-top:24px;">
     <div class="disclaimer" data-testid="disclaimer-card">
       <div class="disclaimer-icon"><i class="ph-fill ph-warning-diamond"></i></div>
-      <div>
+      <div style="flex:1;">
         <h3 class="disclaimer-title">Important Notice</h3>
         <p class="disclaimer-text">
           If your opponent asks you to play on any <strong>other ground</strong> (outside WinzoIndia), <strong>inform us immediately</strong> — you will be rewarded for reporting.
         </p>
-        <p class="disclaimer-warn" data-testid="disclaimer-warn">
+        <p class="disclaimer-warn">
           <i class="ph-fill ph-camera"></i>
           <strong>WIN PROOF REQUIRED</strong> · Always capture a screenshot of your winning screen.
         </p>
+        <button class="btn btn-primary" id="open-report" data-testid="open-report-btn" style="margin-top:14px;">
+          <i class="ph-fill ph-siren"></i> Report Opponent &amp; Earn Reward
+        </button>
       </div>
     </div>
   </section>
 
   <!-- SET GAME BAR -->
-  <section class="container" style="padding-top:24px;padding-bottom:24px;">
+  <section class="container" style="padding-top:24px;">
     <div class="setbar card" data-testid="setbar-card">
       <div class="setbar-head">
         <span class="eyebrow"><i class="ph-fill ph-flag-checkered"></i> Set a Game</span>
@@ -104,18 +105,56 @@
           <i class="ph-fill ph-check-circle"></i> Set
         </button>
       </form>
-      <div id="setbar-feedback" class="setbar-feedback" data-testid="setbar-feedback" hidden></div>
-
-      <!-- Recent sets list -->
-      <div class="sets-list" id="sets-list" data-testid="sets-list"></div>
+      <div id="setbar-feedback" class="setbar-feedback" hidden></div>
     </div>
   </section>
 
-  <footer class="footer">
-    <div class="container">
-      <p><strong>WinzoIndia</strong> · Play responsibly. 18+ only.</p>
+  <!-- OPEN CHALLENGES (global sets pool) -->
+  <section class="container" style="padding-top:24px;padding-bottom:32px;">
+    <div class="card" style="padding:24px 28px;">
+      <div class="section-title" style="margin-bottom:16px;">
+        <h2 style="font-size:1.2rem;"><i class="ph-fill ph-sword" style="color:var(--accent);"></i> Open Challenges</h2>
+        <span>Live matches waiting for opponents</span>
+      </div>
+      <div id="sets-list" data-testid="sets-list"></div>
     </div>
-  </footer>
+  </section>
+
+  <!-- REPORT MODAL -->
+  <div id="report-modal" class="modal" hidden data-testid="report-modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h3><i class="ph-fill ph-siren" style="color:var(--danger);"></i> Report Opponent</h3>
+        <button class="modal-close" id="close-report" data-testid="close-report-btn"><i class="ph ph-x"></i></button>
+      </div>
+      <form id="report-form" class="form" data-testid="report-form">
+        <div class="field">
+          <label for="rOpponent">Opponent Username or Phone</label>
+          <input id="rOpponent" name="opponent" type="text" required placeholder="e.g. raju_98 or +91 98xxxxxxxx" data-testid="report-opponent-input" />
+        </div>
+        <div class="field">
+          <label for="rDetails">What happened?</label>
+          <textarea id="rDetails" name="details" rows="3" required placeholder="They asked to play on another app…" data-testid="report-details-input"></textarea>
+        </div>
+        <div class="field">
+          <label>Win Proof / Screenshot (required)</label>
+          <label class="file-drop" for="rProof" data-testid="report-proof-upload">
+            <i class="ph ph-cloud-arrow-up"></i>
+            <p><strong>Click to upload</strong> your win screenshot</p>
+            <p class="hint">JPG / PNG · Max 5 MB</p>
+            <input id="rProof" type="file" accept="image/*" required />
+          </label>
+          <div id="rProofInfo" class="file-info"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" data-testid="submit-report-btn">
+          <i class="ph-fill ph-paper-plane-tilt"></i> Submit Report
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="footer"><div class="container"><p><strong>WinzoIndia</strong> · Play responsibly. 18+ only.</p></div></footer>
 
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -126,61 +165,138 @@
   <script src="js/main.js"></script>
   <script>
     const session = window.WinzoAuth.requireAuth();
-
-    // Game type labels for display
     const GAME_LABELS = {
       full: "Full Game", "1goti": "1 Goti", "2goti": "2 Goti", "3goti": "3 Goti",
       ulta: "Ulta", "1six": "1 Six", snake: "Snake & Lader"
     };
 
+    // ---- Refresh chips + phone from latest source (users list + settings) ----
+    function refreshView() {
+      const users = window.WinzoAuth.getUsers();
+      const fresh = users.find(u => u.uid === session.uid);
+      const chips = Number((fresh && fresh.chips) || session.chips || 0);
+      document.getElementById("wallet-chips").textContent = chips.toLocaleString("en-IN");
+
+      const settings = window.WinzoSettings.get();
+      const link = document.getElementById("bonus-phone-link");
+      link.textContent = settings.bonusPhone;
+      link.href = "tel:" + settings.bonusPhone.replace(/\s+/g, "");
+
+      renderSets();
+    }
     if (session) {
       document.querySelectorAll("[data-user-name]").forEach(el => el.textContent = session.fullName.split(" ")[0]);
-      // Chips are admin-added; default 0 unless already saved in session
-      const chips = Number(session.chips || 0);
-      document.getElementById("wallet-chips").textContent = chips.toLocaleString("en-IN");
+      refreshView();
+      setInterval(refreshView, 3000); // pick up admin changes live
     }
 
-    // ---- Set-a-Game handler (persists per user in localStorage) ----
-    const SETS_KEY = "winzo_sets_" + (session ? session.uid : "guest");
+    // ---- Sets ----
     const listEl = document.getElementById("sets-list");
     const fbEl   = document.getElementById("setbar-feedback");
 
-    function loadSets() {
-      try { return JSON.parse(localStorage.getItem(SETS_KEY) || "[]"); }
-      catch { return []; }
-    }
-    function saveSets(arr) { localStorage.setItem(SETS_KEY, JSON.stringify(arr)); }
-
     function renderSets() {
-      const arr = loadSets();
-      if (!arr.length) { listEl.innerHTML = ""; return; }
-      listEl.innerHTML = `
-        <div class="sets-head">Your Recent Sets</div>
-        ${arr.slice().reverse().map((s, i) => `
+      const arr = window.WinzoSets.get();
+      if (!arr.length) {
+        listEl.innerHTML = `<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">No open challenges. Be the first to set one!</p>`;
+        return;
+      }
+      listEl.innerHTML = arr.slice().reverse().map((s, i) => {
+        const mine = s.uid === session.uid;
+        const label = GAME_LABELS[s.gameType] || s.gameType;
+        const time = new Date(s.at).toLocaleString("en-IN", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" });
+        const action = s.acceptedBy
+          ? `<div class="set-status accepted">Matched · ${s.acceptedByName || "Player"}</div>`
+          : (mine
+              ? `<button class="btn btn-secondary" data-cancel="${s.id}" data-testid="cancel-set-${i}"><i class="ph ph-x"></i> Cancel</button>`
+              : `<button class="btn btn-primary" data-accept="${s.id}" data-testid="accept-set-${i}"><i class="ph-fill ph-sword"></i> Accept</button>`);
+        return `
           <div class="set-row" data-testid="set-row-${i}">
-            <div class="set-tag">${GAME_LABELS[s.gameType] || s.gameType}</div>
+            <div>
+              <div class="set-tag">${label}</div>
+              <div class="set-time">by ${s.byName}${mine ? " (you)" : ""} · ${time}</div>
+            </div>
             <div class="set-val">₹${Number(s.value).toLocaleString("en-IN")}</div>
-            <div class="set-time">${new Date(s.at).toLocaleString("en-IN", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}</div>
-            <div class="set-status pending">Waiting for opponent</div>
-          </div>`).join("")}
-      `;
+            <div>${action}</div>
+          </div>`;
+      }).join("");
+
+      listEl.querySelectorAll("[data-accept]").forEach(b => b.addEventListener("click", () => acceptSet(b.dataset.accept)));
+      listEl.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => cancelSet(b.dataset.cancel)));
     }
-    renderSets();
+    function acceptSet(id) {
+      const arr = window.WinzoSets.get();
+      const s = arr.find(x => x.id === id);
+      if (!s || s.acceptedBy) return;
+      s.acceptedBy = session.uid;
+      s.acceptedByName = session.fullName;
+      s.acceptedAt = Date.now();
+      window.WinzoSets.save(arr);
+      window.WinzoAuth.toast("Challenge accepted! Contact admin for match room.", "success");
+      renderSets();
+    }
+    function cancelSet(id) {
+      const arr = window.WinzoSets.get().filter(x => x.id !== id || x.uid !== session.uid);
+      window.WinzoSets.save(arr);
+      renderSets();
+    }
 
     document.getElementById("setbar-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = Number(document.getElementById("setValue").value);
       const gt  = document.getElementById("setGameType").value;
       if (!val || val < 1) return;
-      const arr = loadSets();
-      arr.push({ value: val, gameType: gt, at: Date.now() });
-      saveSets(arr);
+      const arr = window.WinzoSets.get();
+      arr.push({
+        id: "s_" + Date.now(),
+        uid: session.uid, byName: session.fullName.split(" ")[0],
+        value: val, gameType: gt, at: Date.now()
+      });
+      window.WinzoSets.save(arr);
       fbEl.hidden = false;
-      fbEl.textContent = `✓ Set placed: ${GAME_LABELS[gt]} for ₹${val.toLocaleString("en-IN")}`;
+      fbEl.textContent = `✓ Challenge set: ${GAME_LABELS[gt]} for ₹${val.toLocaleString("en-IN")}`;
       document.getElementById("setValue").value = "";
       renderSets();
-      window.WinzoAuth.toast("Set placed. Waiting for opponent…", "success");
+      window.WinzoAuth.toast("Challenge posted!", "success");
       setTimeout(() => { fbEl.hidden = true; }, 3200);
+    });
+
+    // ---- Report Opponent modal ----
+    const modal = document.getElementById("report-modal");
+    document.getElementById("open-report").addEventListener("click", () => modal.hidden = false);
+    document.getElementById("close-report").addEventListener("click", () => modal.hidden = true);
+    modal.querySelector(".modal-backdrop").addEventListener("click", () => modal.hidden = true);
+
+    const proofInput = document.getElementById("rProof");
+    const proofInfo  = document.getElementById("rProofInfo");
+    proofInput.addEventListener("change", () => {
+      const f = proofInput.files[0];
+      if (f) proofInfo.textContent = `✓ ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`;
+    });
+
+    document.getElementById("report-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = proofInput.files[0];
+      if (!f) return window.WinzoAuth.toast("Win-proof screenshot required.", "error");
+      if (f.size > 5*1024*1024) return window.WinzoAuth.toast("File must be under 5 MB.", "error");
+      const proofUrl = await new Promise((res, rej) => {
+        const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f);
+      });
+      const reports = window.WinzoReports.get();
+      reports.push({
+        id: "r_" + Date.now(),
+        reporterUid: session.uid,
+        reporterName: session.fullName,
+        opponent: document.getElementById("rOpponent").value.trim(),
+        details:  document.getElementById("rDetails").value.trim(),
+        proofUrl,
+        status: "pending",
+        at: Date.now()
+      });
+      window.WinzoReports.save(reports);
+      modal.hidden = true;
+      e.target.reset();
+      proofInfo.textContent = "";
+      window.WinzoAuth.toast("Report submitted. Admin will review & reward you.", "success");
     });
   </script>
 </body>

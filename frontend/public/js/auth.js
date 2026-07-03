@@ -148,5 +148,43 @@ window.WinzoAuth = {
   session: wzGetSession,
   requireAuth: wzRequireAuth,
   redirectIfAuthed: wzRedirectIfAuthed,
-  toast: wzToast
+  toast: wzToast,
+  getUsers: wzGetUsers,
+  saveUsers: wzSaveUsers,
+  setSession: wzSetSession
 };
+
+// ---- Global settings (bonus phone, admin passcode) ----
+const WZ_SETTINGS_KEY = "winzo_settings";
+function wzGetSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(WZ_SETTINGS_KEY) || "{}");
+    return {
+      bonusPhone: s.bonusPhone || "+91 99999 99999",
+      adminPass:  s.adminPass  || "winzo-admin-2026"
+    };
+  } catch { return { bonusPhone: "+91 99999 99999", adminPass: "winzo-admin-2026" }; }
+}
+function wzSaveSettings(patch) {
+  const cur = wzGetSettings();
+  localStorage.setItem(WZ_SETTINGS_KEY, JSON.stringify({ ...cur, ...patch }));
+}
+window.WinzoSettings = { get: wzGetSettings, save: wzSaveSettings };
+
+// ---- Global sets pool ----
+const WZ_SETS_KEY = "winzo_sets_global";
+function wzGetSets() {
+  try { return JSON.parse(localStorage.getItem(WZ_SETS_KEY) || "[]"); }
+  catch { return []; }
+}
+function wzSaveSets(arr) { localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr)); }
+window.WinzoSets = { get: wzGetSets, save: wzSaveSets };
+
+// ---- Reports ----
+const WZ_REPORTS_KEY = "winzo_reports";
+function wzGetReports() {
+  try { return JSON.parse(localStorage.getItem(WZ_REPORTS_KEY) || "[]"); }
+  catch { return []; }
+}
+function wzSaveReports(arr) { localStorage.setItem(WZ_REPORTS_KEY, JSON.stringify(arr)); }
+window.WinzoReports = { get: wzGetReports, save: wzSaveReports };
