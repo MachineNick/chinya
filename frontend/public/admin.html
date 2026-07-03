@@ -440,12 +440,22 @@
       "add-manual-dep": (form) => form.addEventListener("submit", (e) => {
         e.preventDefault(); const d = Object.fromEntries(new FormData(form));
         const arr = loadJSON("winzo_deposits"); arr.unshift({ id:"d"+Date.now(), user:d.user, amount:Number(d.amount), method:d.method, at:new Date().toISOString(), status:"Success" }); saveJSON("winzo_deposits", arr);
-        window.WinzoAuth.toast("Deposit recorded.", "success"); setView("tx-all-dep","View all deposits","Transaction Management");
+        // Also credit chips on matching user (by email or phone)
+        const users = window.WinzoAuth.getUsers();
+        const u = users.find(x => x.email === d.user || x.phone === d.user);
+        if (u) { u.chips = Number(u.chips || 0) + Number(d.amount); window.WinzoAuth.saveUsers(users); }
+        window.WinzoAuth.toast(u ? `Deposit recorded & ${d.amount} chips credited to ${u.fullName}.` : "Deposit recorded (no matching user for chip credit).", u ? "success" : "info");
+        setView("tx-all-dep","View all deposits","Transaction Management");
       }),
       "add-manual-wd": (form) => form.addEventListener("submit", (e) => {
         e.preventDefault(); const d = Object.fromEntries(new FormData(form));
         const arr = loadJSON("winzo_withdraws"); arr.unshift({ id:"w"+Date.now(), user:d.user, amount:Number(d.amount), method:d.method, at:new Date().toISOString(), status:"Approved", by:form.dataset.by }); saveJSON("winzo_withdraws", arr);
-        window.WinzoAuth.toast("Withdrawal recorded.", "success"); setView("tx-all-wd","View all withdraw requests","Transaction Management");
+        // Also debit chips on matching user
+        const users = window.WinzoAuth.getUsers();
+        const u = users.find(x => x.email === d.user || x.phone === d.user);
+        if (u) { u.chips = Math.max(0, Number(u.chips || 0) - Number(d.amount)); window.WinzoAuth.saveUsers(users); }
+        window.WinzoAuth.toast(u ? `Withdrawal recorded & ${d.amount} chips debited from ${u.fullName}.` : "Withdrawal recorded (no matching user for chip debit).", u ? "success" : "info");
+        setView("tx-all-wd","View all withdraw requests","Transaction Management");
       }),
       "save-phone": (form) => form.addEventListener("submit", (e) => {
         e.preventDefault(); window.WinzoSettings.save({ bonusPhone: form.phone.value.trim() }); window.WinzoAuth.toast("Phone updated.", "success");
