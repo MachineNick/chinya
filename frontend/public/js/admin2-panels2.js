@@ -35,16 +35,29 @@ ${sets.length ? sets.slice().reverse().map(function(s,i){return `<tr><td>${i+1}<
 };
 
 PANELS["search-screenshots"] = function() {
+  const results = (function(){ try { return JSON.parse(localStorage.getItem("winzo_results") || "[]"); } catch(e){ return []; } })();
   const reports = getLiveReports();
-  return `<div class="a2-panel-head"><h2><i class="ph ph-image-square"></i> Search Screenshots / Reports</h2></div>
+  const all = results.concat(reports.map(function(r){ return { _type:"report", submitterName:r.reporterName, submitterPhone:"—", opponentName:r.opponent, opponentPhone:"—", gameType:"—", amount:"—", result:"report", proofUrl:r.proofUrl, status:r.status, at:r.at||"—" }; }));
+  return `<div class="a2-panel-head"><h2><i class="ph ph-image-square"></i> Search Screenshots</h2></div>
 <div class="a2-search">
-  <input type="text" placeholder="Search by reporter or opponent..." oninput="filterTable(this,'ss-tbody',1,2)" />
+  <input type="text" placeholder="Search by player or opponent..." oninput="filterTable(this,'ss-tbody',1,3)" />
 </div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Reporter</th><th>Opponent</th><th>Details</th><th>Proof</th><th>Status</th></tr></thead>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Game ID</th><th>Player</th><th>Phone</th><th>Opponent</th><th>Opp. Phone</th><th>Game</th><th>Amount</th><th>Result</th><th>Screenshot</th><th>Status</th><th>Time</th></tr></thead>
 <tbody id="ss-tbody">
-${reports.length ? reports.slice().reverse().map(function(r,i){return `<tr><td>${i+1}</td><td><strong>${r.reporterName||"—"}</strong></td><td>${r.opponent||"—"}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.details||"—"}</td>
-<td>${r.proofUrl?`<a href="${r.proofUrl}" target="_blank" class="btn btn-secondary" style="padding:4px 10px;font-size:11px;"><i class="ph ph-image"></i> View</a>`:"No proof"}</td>
-<td>${statusBadge(r.status||"pending")}</td></tr>`;}).join("") : emptyRow(6,"No screenshots submitted.")}
+${all.length ? all.map(function(r,i){ return `<tr>
+  <td>${i+1}</td>
+  <td style="font-family:monospace;font-size:12px;color:var(--accent);">${r.gameId||"—"}</td>
+  <td><strong>${r.submitterName||"—"}</strong></td>
+  <td>${r.submitterPhone||"—"}</td>
+  <td>${r.opponentName||"—"}</td>
+  <td>${r.opponentPhone||"—"}</td>
+  <td>${r.gameType||"—"}</td>
+  <td>${r.amount && r.amount!=="—" ? rupee(r.amount) : "—"}</td>
+  <td>${statusBadge(r.result||"pending")}</td>
+  <td>${r.proofUrl ? `<a href="${r.proofUrl}" target="_blank"><img src="${r.proofUrl}" style="width:48px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;" /></a>` : "—"}</td>
+  <td>${statusBadge(r.status||"pending")}</td>
+  <td style="font-size:11px;color:var(--text-muted);">${r.at||"—"}</td>
+</tr>`;}).join("") : emptyRow(12,"No screenshots submitted yet.")}
 </tbody></table></div>`;
 };
 
@@ -62,27 +75,6 @@ ${sets.length ? sets.slice().reverse().map(function(s,i){return `<tr><td>${i+1}<
 };
 
 // ── Transaction Management ────────────────────────────────────
-PANELS["new-deposit-requests"] = function() {
-  const reqs = getLiveDeposits().filter(function(d){ return d.type === "Deposit Request" && d.status === "pending"; });
-  return `<div class="a2-panel-head"><h2><i class="ph ph-bell-ringing"></i> New Deposit Requests</h2><span class="badge badge-yellow">${reqs.length} Pending</span></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>User</th><th>Phone</th><th>Email</th><th>Amount</th><th>Method</th><th>Txn ID / UTR</th><th>Time</th><th>Action</th></tr></thead><tbody>
-${reqs.length ? reqs.map(function(d,i){ return `<tr>
-  <td>${i+1}</td>
-  <td><strong>${d.user||"—"}</strong></td>
-  <td>${d.userPhone||"—"}</td>
-  <td>${d.userEmail||"—"}</td>
-  <td style="color:var(--accent);font-weight:700">${rupee(d.amount)}</td>
-  <td>${d.method||"—"}</td>
-  <td style="font-family:monospace;font-size:12px;">${d.txnId||"—"}</td>
-  <td>${d.time||"—"}</td>
-  <td style="display:flex;gap:6px;">
-    <button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="approveDepositRequest('${d.id}')"><i class="ph ph-check"></i> Approve</button>
-    <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;color:var(--danger);border-color:var(--danger);" onclick="rejectDepositRequest('${d.id}')"><i class="ph ph-x"></i> Reject</button>
-  </td>
-</tr>`;}).join("") : emptyRow(9,"No pending deposit requests.")}
-</tbody></table></div>`;
-};
-
 PANELS["new-deposit-requests"] = function() {
   const reqs = getLiveDeposits().filter(function(d){ return d.type === "Deposit Request" && d.status === "pending"; });
   return `<div class="a2-panel-head"><h2><i class="ph ph-bell-ringing"></i> New Deposit Requests</h2><span class="badge badge-yellow">${reqs.length} Pending</span></div>

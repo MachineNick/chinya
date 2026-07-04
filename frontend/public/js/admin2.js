@@ -105,6 +105,29 @@ window.adminDeleteSet = function (id) {
   window.loadPanel("all-challenges", "View All Challenges");
 };
 
+window.adminToggleKyc = function (uid, approve) {
+  var users = getLiveUsers();
+  var u = users.find(function(x){ return x.uid === uid; });
+  if (!u) return;
+  u.kycVerified = approve;
+  if (approve) { delete u.kycRejected; } else { u.kycRejected = true; }
+  saveLiveUsers(users);
+  var session = JSON.parse(localStorage.getItem("winzo_session") || "null");
+  if (session && session.uid === uid) {
+    session.kycVerified = approve;
+    localStorage.setItem("winzo_session", JSON.stringify(session));
+  }
+  var badge = document.getElementById("kyc-badge-" + uid);
+  if (badge) badge.innerHTML = approve
+    ? '<span class="badge badge-green">verified</span>'
+    : '<span class="badge badge-yellow">pending</span>';
+  var btn = badge && badge.closest("tr").querySelector("td:last-child button:first-child");
+  if (btn) btn.outerHTML = approve
+    ? `<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="adminToggleKyc('${uid}',false)"><i class="ph ph-x-circle"></i> Revoke KYC</button>`
+    : `<button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="adminToggleKyc('${uid}',true)"><i class="ph ph-check-circle"></i> Approve KYC</button>`;
+  showToast(approve ? "KYC approved ✓" : "KYC revoked", approve ? "success" : "error");
+};
+
 window.adminRejectKyc = function (uid) {
   var users = getLiveUsers();
   var u = users.find(function(x){ return x.uid === uid; });

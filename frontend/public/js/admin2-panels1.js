@@ -154,14 +154,19 @@ PANELS["view-all-users"] = function() {
 </div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>KYC</th><th>Chips</th><th>Add / Subtract Chips</th><th>Joined</th><th>Action</th></tr></thead>
 <tbody id="all-users-tbody">
-${users.length ? users.map(function(u,i){return `<tr><td>${i+1}</td><td><strong>${u.fullName||u.name||"—"}</strong></td><td>${u.phone||"—"}</td><td>${u.email||"—"}</td><td>${statusBadge(u.kycVerified?"verified":"pending")}</td><td style="color:var(--accent);font-weight:700" id="chips-${u.uid}">${Number(u.chips||u.wallet||0).toLocaleString("en-IN")}</td>
+${users.length ? users.map(function(u,i){return `<tr><td>${i+1}</td><td><strong>${u.fullName||u.name||"—"}</strong></td><td>${u.phone||"—"}</td><td>${u.email||"—"}</td><td id="kyc-badge-${u.uid}">${statusBadge(u.kycVerified?"verified":"pending")}</td><td style="color:var(--accent);font-weight:700" id="chips-${u.uid}">${Number(u.chips||u.wallet||0).toLocaleString("en-IN")}</td>
 <td style="white-space:nowrap;display:flex;gap:6px;align-items:center;">
   <input type="number" min="1" placeholder="Amount" id="chipamt-${u.uid}" style="width:90px;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:#0F0F16;color:#fff;font-size:13px;" />
   <button class="btn btn-primary" style="padding:5px 10px;font-size:12px;" onclick="adminChipOp('${u.uid}',1)"><i class="ph ph-plus"></i> Add</button>
   <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px;" onclick="adminChipOp('${u.uid}',-1)"><i class="ph ph-minus"></i> Sub</button>
 </td>
 <td>${(u.createdAt||"—").slice(0,10)}</td>
-<td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;color:var(--danger);border-color:var(--danger);" onclick="adminDeleteUser('${u.uid}')"><i class="ph ph-trash"></i> Delete</button></td></tr>`;}).join("") : emptyRow(9,"No users registered yet.")}
+<td style="display:flex;gap:6px;flex-wrap:wrap;">
+  ${u.kycVerified
+    ? `<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="adminToggleKyc('${u.uid}',false)"><i class="ph ph-x-circle"></i> Revoke KYC</button>`
+    : `<button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="adminToggleKyc('${u.uid}',true)"><i class="ph ph-check-circle"></i> Approve KYC</button>`}
+  <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;color:var(--danger);border-color:var(--danger);" onclick="adminDeleteUser('${u.uid}')"><i class="ph ph-trash"></i></button>
+</td></tr>`;}).join("") : emptyRow(9,"No users registered yet.")}
 </tbody></table></div>`;
 };
 
