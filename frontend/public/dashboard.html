@@ -43,8 +43,37 @@
         Bonus add karwane ke lie contact kare
         <a id="bonus-phone-link" href="#" class="bonus-phone" data-testid="bonus-phone">+91 99999 99999</a>
       </p>
+      <button class="btn btn-primary" id="open-upi" data-testid="open-upi-btn" style="margin-top:14px;">
+        <i class="ph-fill ph-qr-code"></i> Pay via UPI &amp; Add Chips
+      </button>
     </div>
   </section>
+
+  <!-- UPI PAY MODAL -->
+  <div id="upi-modal" class="modal" hidden data-testid="upi-modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h3><i class="ph-fill ph-qr-code" style="color:var(--accent);"></i> Pay via UPI</h3>
+        <button class="modal-close" id="close-upi"><i class="ph ph-x"></i></button>
+      </div>
+      <div style="text-align:center;">
+        <img id="upi-qr" alt="UPI QR" style="width:220px;height:220px;background:#fff;padding:12px;border-radius:8px;margin:0 auto 16px;" />
+        <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Scan or copy UPI ID</div>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center;background:#0F0F16;border:1px dashed rgba(255,215,0,0.4);border-radius:6px;padding:10px 14px;margin-bottom:16px;">
+          <strong id="upi-id-text" style="color:var(--accent);font-family:var(--font-head);letter-spacing:0.5px;" data-testid="upi-id-text">—</strong>
+          <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" id="copy-upi" data-testid="copy-upi-btn"><i class="ph ph-copy"></i> Copy</button>
+        </div>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">
+          After paying, send a screenshot to our admin on WhatsApp / call.<br/>
+          Chips will be credited within a few minutes.
+        </p>
+        <a id="upi-whatsapp" class="btn btn-primary btn-block" target="_blank" rel="noopener" data-testid="upi-whatsapp-btn">
+          <i class="ph-fill ph-whatsapp-logo"></i> Send Proof on WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
 
   <!-- WALLET CHIPS -->
   <section class="container" style="padding-top:24px;">
@@ -258,6 +287,25 @@
       renderSets();
       window.WinzoAuth.toast("Challenge posted!", "success");
       setTimeout(() => { fbEl.hidden = true; }, 3200);
+    });
+
+    // ---- UPI Pay modal ----
+    const upiModal = document.getElementById("upi-modal");
+    document.getElementById("close-upi").addEventListener("click", () => upiModal.hidden = true);
+    upiModal.querySelector(".modal-backdrop").addEventListener("click", () => upiModal.hidden = true);
+    document.getElementById("open-upi").addEventListener("click", () => {
+      const s = window.WinzoSettings.get();
+      const upiUri = `upi://pay?pa=${encodeURIComponent(s.upiId)}&pn=${encodeURIComponent(s.upiName)}&cu=INR`;
+      document.getElementById("upi-id-text").textContent = s.upiId;
+      document.getElementById("upi-qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(upiUri)}`;
+      const wa = s.bonusPhone.replace(/\D/g, "");
+      const msg = encodeURIComponent(`Hi WinzoIndia, I paid to ${s.upiId}. My username: ${session.fullName}. Please add chips.`);
+      document.getElementById("upi-whatsapp").href = `https://wa.me/${wa}?text=${msg}`;
+      upiModal.hidden = false;
+    });
+    document.getElementById("copy-upi").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(document.getElementById("upi-id-text").textContent); window.WinzoAuth.toast("UPI ID copied!", "success"); }
+      catch { window.WinzoAuth.toast("Copy failed. Long-press to select.", "error"); }
     });
 
     // ---- Report Opponent modal ----
