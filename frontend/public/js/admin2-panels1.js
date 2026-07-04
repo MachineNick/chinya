@@ -1,170 +1,223 @@
 // ============================================================
 // WinzoIndia Admin v2 — Panel Renderers (Part 1)
-// Setup + Game Management + User Management
+// All user/set/report data read LIVE from localStorage
 // ============================================================
 
 const PANELS = {};
 
-// ── Overview ────────────────────────────────────────────────
-PANELS.overview = () => `
+// ── Overview ─────────────────────────────────────────────────
+PANELS.overview = function() {
+  const users = getLiveUsers();
+  const deposits = getLiveDeposits();
+  const withdrawals = getLiveWithdrawals();
+  const sets = getLiveSets();
+  const reports = getLiveReports();
+  const totalDep = deposits.filter(function(d){return d.status==="success";}).reduce(function(a,d){return a+Number(d.amount||0);},0);
+  const totalWd  = withdrawals.filter(function(w){return w.status==="approved";}).reduce(function(a,w){return a+Number(w.amount||0);},0);
+  const pendingReports = reports.filter(function(r){return r.status==="pending";}).length;
+
+  return `
 <div class="a2-overview-grid">
-  <div class="a2-stat-card"><div class="a2-stat-icon"><i class="ph-fill ph-users"></i></div><div><div class="a2-stat-val">${STATIC.users.length}</div><div class="a2-stat-lbl">Total Users</div></div></div>
-  <div class="a2-stat-card"><div class="a2-stat-icon green"><i class="ph-fill ph-currency-inr"></i></div><div><div class="a2-stat-val" style="color:var(--success)">₹${STATIC.deposits.filter(d=>d.status==="success").reduce((a,d)=>a+d.amount,0).toLocaleString("en-IN")}</div><div class="a2-stat-lbl">Total Deposits</div></div></div>
-  <div class="a2-stat-card"><div class="a2-stat-icon red"><i class="ph-fill ph-arrow-up-right"></i></div><div><div class="a2-stat-val" style="color:var(--danger)">₹${STATIC.withdrawals.filter(w=>w.status==="approved").reduce((a,w)=>a+w.amount,0).toLocaleString("en-IN")}</div><div class="a2-stat-lbl">Total Withdrawals</div></div></div>
-  <div class="a2-stat-card"><div class="a2-stat-icon blue"><i class="ph-fill ph-sword"></i></div><div><div class="a2-stat-val" style="color:#007AFF">${STATIC.challenges.length}</div><div class="a2-stat-lbl">Total Challenges</div></div></div>
+  <div class="a2-stat-card"><div class="a2-stat-icon"><i class="ph-fill ph-users"></i></div><div><div class="a2-stat-val">${users.length}</div><div class="a2-stat-lbl">Total Users</div></div></div>
+  <div class="a2-stat-card"><div class="a2-stat-icon green"><i class="ph-fill ph-currency-inr"></i></div><div><div class="a2-stat-val" style="color:var(--success)">${rupee(totalDep)}</div><div class="a2-stat-lbl">Total Deposits</div></div></div>
+  <div class="a2-stat-card"><div class="a2-stat-icon red"><i class="ph-fill ph-arrow-up-right"></i></div><div><div class="a2-stat-val" style="color:var(--danger)">${rupee(totalWd)}</div><div class="a2-stat-lbl">Total Withdrawals</div></div></div>
+  <div class="a2-stat-card"><div class="a2-stat-icon blue"><i class="ph-fill ph-sword"></i></div><div><div class="a2-stat-val" style="color:#007AFF">${sets.length}</div><div class="a2-stat-lbl">Open Challenges</div></div></div>
   <div class="a2-stat-card"><div class="a2-stat-icon"><i class="ph-fill ph-trophy"></i></div><div><div class="a2-stat-val">${STATIC.tournaments.length}</div><div class="a2-stat-lbl">Tournaments</div></div></div>
-  <div class="a2-stat-card"><div class="a2-stat-icon red"><i class="ph-fill ph-warning-octagon"></i></div><div><div class="a2-stat-val" style="color:var(--danger)">${STATIC.users.filter(u=>u.fraud).length}</div><div class="a2-stat-lbl">Fraud Users</div></div></div>
+  <div class="a2-stat-card"><div class="a2-stat-icon red"><i class="ph-fill ph-warning-octagon"></i></div><div><div class="a2-stat-val" style="color:var(--danger)">${pendingReports}</div><div class="a2-stat-lbl">Pending Reports</div></div></div>
 </div>
-<div class="a2-panel-head"><h2><i class="ph ph-clock-countdown"></i> Recent Activity</h2></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>Type</th><th>User</th><th>Details</th><th>Time</th><th>Status</th></tr></thead><tbody>
-  ${STATIC.deposits.slice(0,3).map(d=>`<tr><td><span class="badge badge-green">Deposit</span></td><td>${d.user}</td><td>${rupee(d.amount)} via ${d.method}</td><td>${d.time}</td><td>${statusBadge(d.status)}</td></tr>`).join("")}
-  ${STATIC.withdrawals.slice(0,2).map(w=>`<tr><td><span class="badge badge-red">Withdraw</span></td><td>${w.user}</td><td>${rupee(w.amount)} via ${w.method}</td><td>${w.time}</td><td>${statusBadge(w.status)}</td></tr>`).join("")}
+<div class="a2-panel-head"><h2><i class="ph ph-users"></i> Registered Users</h2></div>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Chips</th><th>KYC</th><th>Joined</th></tr></thead><tbody>
+${users.length ? users.map(function(u,i){return `<tr><td>${i+1}</td><td><strong>${u.fullName||u.name||"—"}</strong></td><td>${u.phone||"—"}</td><td>${u.email||"—"}</td><td style="color:var(--accent);font-weight:700">${Number(u.chips||u.wallet||0).toLocaleString("en-IN")}</td><td>${statusBadge(u.kycVerified?"verified":"pending")}</td><td>${(u.createdAt||u.joined||"—").slice(0,10)}</td></tr>`;}).join("") : emptyRow(7,"No users registered yet.")}
 </tbody></table></div>`;
+};
 
-// ── Setup: Deposit Transaction Report ───────────────────────
-PANELS["deposit-report"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-receipt"></i> Deposit Transaction Report</h2></div>
+// ── Setup: Deposit Transaction Report ────────────────────────
+PANELS["deposit-report"] = function() {
+  const deposits = getLiveDeposits();
+  return `<div class="a2-panel-head"><h2><i class="ph ph-receipt"></i> Deposit Transaction Report</h2></div>
 <div class="a2-search">
-  <input type="text" placeholder="Search user or transaction ID..." oninput="filterTable(this,'deposit-report-tbody',0,2)" />
-  <select onchange="filterTable(this,'deposit-report-tbody',4)">
-    <option value="">All Status</option><option>success</option><option>pending</option><option>failed</option>
-  </select>
+  <input type="text" placeholder="Search user, phone or email..." oninput="filterTable(this,'dep-report-tbody',2,3,4)" />
 </div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Txn ID</th><th>User</th><th>Amount</th><th>Method</th><th>Status</th><th>Time</th></tr></thead>
-<tbody id="deposit-report-tbody">
-${STATIC.deposits.map((d,i)=>`<tr><td>${i+1}</td><td style="font-family:var(--font-head);font-size:11px;color:var(--text-muted)">${d.id.toUpperCase()}</td><td>${d.user}</td><td style="color:var(--success);font-weight:600">${rupee(d.amount)}</td><td>${d.method}</td><td>${statusBadge(d.status)}</td><td>${d.time}</td></tr>`).join("")}
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Txn ID</th><th>User</th><th>Phone</th><th>Email</th><th>Amount</th><th>Type</th><th>Method</th><th>Status</th><th>Time</th></tr></thead>
+<tbody id="dep-report-tbody">
+${deposits.length ? deposits.map(function(d,i){
+  const isAdd = (d.type||"").toLowerCase().includes("add") || (d.method||"").toLowerCase().includes("admin") && !(d.type||"").toLowerCase().includes("subtract");
+  const isSub = (d.type||"").toLowerCase().includes("subtract");
+  const amtColor = isSub ? "var(--danger)" : "var(--success)";
+  const amtPrefix = isSub ? "−" : "+";
+  return `<tr>
+    <td>${i+1}</td>
+    <td style="font-family:var(--font-head);font-size:11px;color:var(--text-muted)">${(d.id||"—").toUpperCase()}</td>
+    <td><strong>${d.user||d.userName||"—"}</strong></td>
+    <td>${d.userPhone||"—"}</td>
+    <td>${d.userEmail||"—"}</td>
+    <td style="color:${amtColor};font-weight:700">${amtPrefix}${rupee(d.amount)}</td>
+    <td>${d.type||"Deposit"}</td>
+    <td>${d.method||"UPI"}</td>
+    <td>${statusBadge(d.status||"pending")}</td>
+    <td>${d.time||d.createdAt||"—"}</td>
+  </tr>`;}).join("") : emptyRow(10,"No transaction records yet.")}
 </tbody></table></div>`;
+};
 
-// ── Setup: All Tournaments ───────────────────────────────────
-PANELS["all-tournaments"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-trophy"></i> All Tournaments</h2></div>
+// ── Setup: All Tournaments ────────────────────────────────────
+PANELS["all-tournaments"] = function() {
+  return `<div class="a2-panel-head"><h2><i class="ph ph-trophy"></i> All Tournaments</h2></div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Game</th><th>Entry</th><th>Prize Pool</th><th>Players</th><th>Status</th><th>Start</th></tr></thead><tbody>
-${STATIC.tournaments.map((t,i)=>`<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.game}</td><td>${rupee(t.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(t.prize)}</td><td>${t.players}</td><td>${statusBadge(t.status)}</td><td>${t.start}</td></tr>`).join("")}
+${STATIC.tournaments.map(function(t,i){return `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.game}</td><td>${rupee(t.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(t.prize)}</td><td>${t.players}</td><td>${statusBadge(t.status)}</td><td>${t.start}</td></tr>`;}).join("")}
 </tbody></table></div>`;
+};
 
-// ── Setup: Running Tournaments ───────────────────────────────
-PANELS["running-tournaments"] = () => {
-  const running = STATIC.tournaments.filter(t=>t.status==="running");
+// ── Setup: Running Tournaments ────────────────────────────────
+PANELS["running-tournaments"] = function() {
+  const running = STATIC.tournaments.filter(function(t){return t.status==="running";});
   return `<div class="a2-panel-head"><h2><i class="ph ph-play-circle"></i> Running Tournaments</h2><span class="badge badge-blue">${running.length} Live</span></div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Game</th><th>Entry</th><th>Prize Pool</th><th>Players</th><th>Start</th><th>Action</th></tr></thead><tbody>
-${running.length ? running.map((t,i)=>`<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.game}</td><td>${rupee(t.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(t.prize)}</td><td>${t.players}</td><td>${t.start}</td><td><button class="btn btn-secondary" style="padding:6px 12px;font-size:11px;"><i class="ph ph-stop-circle"></i> Stop</button></td></tr>`).join("") : emptyRow(8,"No running tournaments.")}
+${running.length ? running.map(function(t,i){return `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.game}</td><td>${rupee(t.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(t.prize)}</td><td>${t.players}</td><td>${t.start}</td><td><button class="btn btn-secondary" style="padding:6px 12px;font-size:11px;"><i class="ph ph-stop-circle"></i> Stop</button></td></tr>`;}).join("") : emptyRow(8,"No running tournaments.")}
 </tbody></table></div>`;
 };
 
-// ── Setup: Challenges ────────────────────────────────────────
-PANELS["challenges-setup"] = () => PANELS["all-challenges"]();
+// ── Setup: Challenges ─────────────────────────────────────────
+PANELS["challenges-setup"] = function() { return PANELS["all-challenges"](); };
 
-// ── Setup: Blacklisted Names ─────────────────────────────────
-PANELS["blacklisted"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-prohibit"></i> Blacklisted Names</h2>
+// ── Setup: Blacklisted Names ──────────────────────────────────
+PANELS["blacklisted"] = function() {
+  const list = getLiveBlacklist();
+  return `<div class="a2-panel-head"><h2><i class="ph ph-prohibit"></i> Blacklisted Names</h2>
   <button class="btn btn-primary" style="padding:8px 16px;font-size:12px;" onclick="showAddBlacklist()"><i class="ph ph-plus"></i> Add Name</button>
 </div>
-<div id="blacklist-msg"></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Reason</th><th>Added</th><th>Action</th></tr></thead><tbody id="blacklist-tbody">
-${STATIC.blacklisted.map((b,i)=>`<tr id="bl-${b.id}"><td>${i+1}</td><td><strong>${b.name}</strong></td><td>${b.reason}</td><td>${b.added}</td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="removeBlacklist('${b.id}')"><i class="ph ph-trash"></i> Remove</button></td></tr>`).join("")}
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Reason</th><th>Added</th><th>Action</th></tr></thead>
+<tbody id="blacklist-tbody">
+${list.length ? list.map(function(b,i){return `<tr id="bl-${b.id}"><td>${i+1}</td><td><strong>${b.name}</strong></td><td>${b.reason||"—"}</td><td>${(b.added||b.createdAt||"—").slice(0,10)}</td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="removeBlacklist('${b.id}')"><i class="ph ph-trash"></i> Remove</button></td></tr>`;}).join("") : emptyRow(5,"No blacklisted names.")}
 </tbody></table></div>`;
+};
 
-// ── Game Management ──────────────────────────────────────────
-PANELS["view-all-games"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-list-bullets"></i> All Games</h2></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Type</th><th>Entry Fee</th><th>Prize</th><th>Max Players</th><th>Status</th><th>Created</th></tr></thead><tbody>
-${STATIC.games.map((g,i)=>`<tr><td>${i+1}</td><td><strong>${g.name}</strong></td><td><span class="badge ${g.type==="tournament"?"badge-blue":"badge-yellow"}">${g.type}</span></td><td>${rupee(g.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(g.prize)}</td><td>${g.players}</td><td>${statusBadge(g.status)}</td><td>${g.created}</td></tr>`).join("")}
+// ── Game Management ───────────────────────────────────────────
+function getLiveGames() {
+  try { return JSON.parse(localStorage.getItem("winzo_games") || "null") || STATIC.games.slice(); }
+  catch { return STATIC.games.slice(); }
+}
+function saveLiveGames(arr) { localStorage.setItem("winzo_games", JSON.stringify(arr)); }
+
+PANELS["view-all-games"] = function() {
+  const games = getLiveGames();
+  return `<div class="a2-panel-head"><h2><i class="ph ph-list-bullets"></i> All Games</h2></div>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Type</th><th>Entry Fee</th><th>Prize</th><th>Max Players</th><th>Status</th><th>Action</th></tr></thead><tbody>
+${games.map(function(g,i){return `<tr><td>${i+1}</td><td><strong>${g.name}</strong></td><td><span class="badge ${g.type==="tournament"?"badge-blue":"badge-yellow"}">${g.type}</span></td><td>${rupee(g.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(g.prize)}</td><td>${g.players}</td><td>${statusBadge(g.status)}</td><td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;color:var(--danger);border-color:var(--danger);" onclick="adminDeleteGame('${g.id}')"><i class="ph ph-trash"></i></button></td></tr>`;}).join("")}
 </tbody></table></div>`;
+};
 
-PANELS["add-game"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-plus-circle"></i> Add New Game</h2></div>
-<div class="a2-form-card">
-  <div class="form">
-    <div class="a2-form-grid">
-      <div class="field"><label>Game Name</label><input type="text" placeholder="e.g. Ludo Classic" /></div>
-      <div class="field"><label>Game Type</label><select><option>regular</option><option>tournament</option></select></div>
-      <div class="field"><label>Entry Fee (₹)</label><input type="number" placeholder="50" /></div>
-      <div class="field"><label>Prize Amount (₹)</label><input type="number" placeholder="90" /></div>
-      <div class="field"><label>Max Players</label><input type="number" placeholder="2" /></div>
-      <div class="field"><label>Status</label><select><option>active</option><option>inactive</option></select></div>
-    </div>
-    <div class="field"><label>Description</label><textarea rows="3" placeholder="Game rules and description..."></textarea></div>
-    <button class="btn btn-primary" onclick="showToast('Game added successfully! (static demo)','success')"><i class="ph-fill ph-plus-circle"></i> Add Game</button>
+PANELS["add-game"] = function() {
+  return `<div class="a2-panel-head"><h2><i class="ph ph-plus-circle"></i> Add New Game</h2></div>
+<div class="a2-form-card"><div class="form">
+  <div class="a2-form-grid">
+    <div class="field"><label>Game Name</label><input id="ng-name" type="text" placeholder="e.g. Full Game" /></div>
+    <div class="field"><label>Game Type</label><select id="ng-type"><option>regular</option><option>tournament</option></select></div>
+    <div class="field"><label>Entry Fee (₹)</label><input id="ng-entry" type="number" placeholder="50" /></div>
+    <div class="field"><label>Prize Amount (₹)</label><input id="ng-prize" type="number" placeholder="90" /></div>
+    <div class="field"><label>Max Players</label><input id="ng-players" type="number" placeholder="2" /></div>
+    <div class="field"><label>Status</label><select id="ng-status"><option>active</option><option>inactive</option></select></div>
   </div>
-</div>`;
+  <button class="btn btn-primary" onclick="adminAddGame()"><i class="ph-fill ph-plus-circle"></i> Add Game</button>
+</div></div>`;
+};
 
-PANELS["view-tournament-games"] = () => {
-  const tg = STATIC.games.filter(g=>g.type==="tournament");
+PANELS["view-tournament-games"] = function() {
+  const tg = STATIC.games.filter(function(g){return g.type==="tournament";});
   return `<div class="a2-panel-head"><h2><i class="ph ph-list-star"></i> Tournament Games</h2></div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Entry Fee</th><th>Prize Pool</th><th>Max Players</th><th>Status</th></tr></thead><tbody>
-${tg.map((g,i)=>`<tr><td>${i+1}</td><td><strong>${g.name}</strong></td><td>${rupee(g.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(g.prize)}</td><td>${g.players}</td><td>${statusBadge(g.status)}</td></tr>`).join("")}
+${tg.map(function(g,i){return `<tr><td>${i+1}</td><td><strong>${g.name}</strong></td><td>${rupee(g.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(g.prize)}</td><td>${g.players}</td><td>${statusBadge(g.status)}</td></tr>`;}).join("")}
 </tbody></table></div>`;
 };
 
-PANELS["add-tournament-game"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-plus-square"></i> Add Tournament Game</h2></div>
-<div class="a2-form-card">
-  <div class="form">
-    <div class="a2-form-grid">
-      <div class="field"><label>Tournament Name</label><input type="text" placeholder="e.g. Ludo Grand Prix" /></div>
-      <div class="field"><label>Base Game</label><select><option>Ludo Classic</option><option>Snake & Ladder</option><option>Ludo Blitz</option></select></div>
-      <div class="field"><label>Entry Fee (₹)</label><input type="number" placeholder="100" /></div>
-      <div class="field"><label>Prize Pool (₹)</label><input type="number" placeholder="5000" /></div>
-      <div class="field"><label>Max Players</label><input type="number" placeholder="64" /></div>
-      <div class="field"><label>Start Date & Time</label><input type="datetime-local" /></div>
-    </div>
-    <button class="btn btn-primary" onclick="showToast('Tournament game added! (static demo)','success')"><i class="ph-fill ph-trophy"></i> Create Tournament</button>
+PANELS["add-tournament-game"] = function() {
+  return `<div class="a2-panel-head"><h2><i class="ph ph-plus-square"></i> Add Tournament Game</h2></div>
+<div class="a2-form-card"><div class="form">
+  <div class="a2-form-grid">
+    <div class="field"><label>Tournament Name</label><input type="text" placeholder="e.g. Ludo Grand Prix" /></div>
+    <div class="field"><label>Base Game</label><select><option>Ludo Classic</option><option>Snake & Ladder</option><option>Ludo Blitz</option></select></div>
+    <div class="field"><label>Entry Fee (₹)</label><input type="number" placeholder="100" /></div>
+    <div class="field"><label>Prize Pool (₹)</label><input type="number" placeholder="5000" /></div>
+    <div class="field"><label>Max Players</label><input type="number" placeholder="64" /></div>
+    <div class="field"><label>Start Date & Time</label><input type="datetime-local" /></div>
   </div>
-</div>`;
+  <button class="btn btn-primary" onclick="showToast('Tournament created! (Firebase needed for persistence)','success')"><i class="ph-fill ph-trophy"></i> Create Tournament</button>
+</div></div>`;
+};
 
-// ── User Management ──────────────────────────────────────────
-PANELS["view-all-users"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-user-list"></i> All Users</h2></div>
+// ── User Management ───────────────────────────────────────────
+PANELS["view-all-users"] = function() {
+  const users = getLiveUsers();
+  return `<div class="a2-panel-head"><h2><i class="ph ph-user-list"></i> All Users</h2></div>
 <div class="a2-search">
-  <input type="text" placeholder="Search name, phone or email..." oninput="filterTable(this,'all-users-tbody',0,1,2,3)" />
+  <input type="text" placeholder="Search name, phone or email..." oninput="filterTable(this,'all-users-tbody',1,2,3)" />
 </div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>KYC</th><th>Chips</th><th>Wallet</th><th>Status</th><th>Joined</th></tr></thead>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>KYC</th><th>Chips</th><th>Add / Subtract Chips</th><th>Joined</th><th>Action</th></tr></thead>
 <tbody id="all-users-tbody">
-${STATIC.users.map((u,i)=>`<tr><td>${i+1}</td><td><strong>${u.name}</strong></td><td>${u.phone}</td><td>${u.email}</td><td>${statusBadge(u.kycStatus)}</td><td style="color:var(--accent);font-weight:700">${u.chips.toLocaleString("en-IN")}</td><td>${rupee(u.wallet)}</td><td>${statusBadge(u.status)}</td><td>${u.joined}</td></tr>`).join("")}
+${users.length ? users.map(function(u,i){return `<tr><td>${i+1}</td><td><strong>${u.fullName||u.name||"—"}</strong></td><td>${u.phone||"—"}</td><td>${u.email||"—"}</td><td>${statusBadge(u.kycVerified?"verified":"pending")}</td><td style="color:var(--accent);font-weight:700" id="chips-${u.uid}">${Number(u.chips||u.wallet||0).toLocaleString("en-IN")}</td>
+<td style="white-space:nowrap;display:flex;gap:6px;align-items:center;">
+  <input type="number" min="1" placeholder="Amount" id="chipamt-${u.uid}" style="width:90px;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:#0F0F16;color:#fff;font-size:13px;" />
+  <button class="btn btn-primary" style="padding:5px 10px;font-size:12px;" onclick="adminChipOp('${u.uid}',1)"><i class="ph ph-plus"></i> Add</button>
+  <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px;" onclick="adminChipOp('${u.uid}',-1)"><i class="ph ph-minus"></i> Sub</button>
+</td>
+<td>${(u.createdAt||"—").slice(0,10)}</td>
+<td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;color:var(--danger);border-color:var(--danger);" onclick="adminDeleteUser('${u.uid}')"><i class="ph ph-trash"></i> Delete</button></td></tr>`;}).join("") : emptyRow(9,"No users registered yet.")}
 </tbody></table></div>`;
+};
 
-PANELS["add-user"] = () => `
-<div class="a2-panel-head"><h2><i class="ph ph-user-plus"></i> Add New User</h2></div>
-<div class="a2-form-card">
-  <div class="form">
-    <div class="a2-form-grid">
-      <div class="field"><label>Full Name</label><input type="text" placeholder="Full name" /></div>
-      <div class="field"><label>Phone</label><input type="tel" placeholder="10-digit mobile" /></div>
-      <div class="field"><label>Email</label><input type="email" placeholder="user@example.com" /></div>
-      <div class="field"><label>Password</label><input type="password" placeholder="Min 8 chars" /></div>
-      <div class="field"><label>KYC Type</label><select><option>Aadhaar</option><option>PAN</option><option>DL</option><option>Passport</option></select></div>
-      <div class="field"><label>Initial Chips</label><input type="number" placeholder="0" /></div>
-    </div>
-    <button class="btn btn-primary" onclick="showToast('User added! (static demo)','success')"><i class="ph-fill ph-user-plus"></i> Create User</button>
+PANELS["add-user"] = function() {
+  return `<div class="a2-panel-head"><h2><i class="ph ph-user-plus"></i> Add New User</h2></div>
+<div class="a2-form-card"><div class="form">
+  <div class="a2-form-grid">
+    <div class="field"><label>Full Name</label><input id="nu-name" type="text" placeholder="Full name" /></div>
+    <div class="field"><label>Phone</label><input id="nu-phone" type="tel" placeholder="10-digit mobile" /></div>
+    <div class="field"><label>Email</label><input id="nu-email" type="email" placeholder="user@example.com" /></div>
+    <div class="field"><label>Password</label><input id="nu-pass" type="password" placeholder="Min 8 chars" /></div>
+    <div class="field"><label>KYC Type</label><select id="nu-kyc"><option>aadhaar</option><option>pan</option><option>dl</option><option>passport</option></select></div>
+    <div class="field"><label>Initial Chips</label><input id="nu-chips" type="number" placeholder="0" /></div>
   </div>
-</div>`;
+  <button class="btn btn-primary" onclick="adminAddUser()"><i class="ph-fill ph-user-plus"></i> Create User</button>
+</div></div>`;
+};
 
-PANELS["review-kyc"] = () => {
-  const pending = STATIC.users.filter(u=>u.kycStatus==="pending"||u.kycStatus==="rejected");
-  return `<div class="a2-panel-head"><h2><i class="ph ph-identification-card"></i> Review KYC Users</h2><span class="badge badge-yellow">${pending.length} Pending</span></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>KYC Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-${pending.length ? pending.map((u,i)=>`<tr><td>${i+1}</td><td><strong>${u.name}</strong></td><td>${u.phone}</td><td>${u.kyc}</td><td>${statusBadge(u.kycStatus)}</td>
-<td style="display:flex;gap:8px;">
-  <button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="showToast('KYC Approved for ${u.name}','success')"><i class="ph ph-check"></i> Approve</button>
-  <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="showToast('KYC Rejected for ${u.name}','error')"><i class="ph ph-x"></i> Reject</button>
-</td></tr>`).join("") : emptyRow(6,"All KYC submissions reviewed.")}
+PANELS["review-kyc"] = function() {
+  const users = getLiveUsers().filter(function(u){return !u.kycVerified;});
+  return `<div class="a2-panel-head"><h2><i class="ph ph-identification-card"></i> Review KYC Users</h2><span class="badge badge-yellow">${users.length} Pending</span></div>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>KYC Type</th><th>Uploaded Doc</th><th>Actions</th></tr></thead><tbody>
+${users.length ? users.map(function(u,i){
+  var viewBtn = u.kycKey
+    ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminViewKyc('${u.kycKey}')"><i class="ph ph-eye"></i> View Doc</button>`
+    : u.kycUrl
+      ? `<a href="${u.kycUrl}" target="_blank" class="btn btn-primary" style="padding:5px 12px;font-size:12px;"><i class="ph ph-eye"></i> View Doc</a>`
+      : `<span style="color:var(--danger);font-size:12px;">Not uploaded</span>`;
+  return `<tr>
+    <td>${i+1}</td>
+    <td><strong>${u.fullName||u.name||"—"}</strong><br><span style="color:var(--text-muted);font-size:11px;">${u.email||""}</span></td>
+    <td>${u.phone||"—"}</td>
+    <td><span class="badge badge-yellow">${u.kycType||"—"}</span></td>
+    <td>${viewBtn}</td>
+    <td style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="adminApproveKyc('${u.uid}')"><i class="ph ph-check-circle"></i> Approve</button>
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="adminRejectKyc('${u.uid}')"><i class="ph ph-x-circle"></i> Reject</button>
+    </td>
+  </tr>`;}).join("") : emptyRow(6,"No pending KYC submissions.")}
 </tbody></table></div>`;
 };
 
-PANELS["fraud-users"] = () => {
-  const fraud = STATIC.users.filter(u=>u.fraud);
-  return `<div class="a2-panel-head"><h2><i class="ph ph-warning-octagon"></i> Fraud Users</h2><span class="badge badge-red">${fraud.length} Flagged</span></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Chips</th><th>Status</th><th>Action</th></tr></thead><tbody>
-${fraud.length ? fraud.map((u,i)=>`<tr><td>${i+1}</td><td><strong style="color:var(--danger)">${u.name}</strong></td><td>${u.phone}</td><td>${u.email}</td><td>${u.chips}</td><td>${statusBadge(u.status)}</td>
-<td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="showToast('User banned (static demo)','error')"><i class="ph ph-prohibit"></i> Ban</button></td></tr>`).join("") : emptyRow(7,"No fraud users flagged.")}
+PANELS["fraud-users"] = function() {
+  const users = getLiveUsers().filter(function(u){return u.fraud;});
+  return `<div class="a2-panel-head"><h2><i class="ph ph-warning-octagon"></i> Fraud Users</h2><span class="badge badge-red">${users.length} Flagged</span></div>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Chips</th><th>Action</th></tr></thead><tbody>
+${users.length ? users.map(function(u,i){return `<tr><td>${i+1}</td><td><strong style="color:var(--danger)">${u.fullName||u.name||"—"}</strong></td><td>${u.phone||"—"}</td><td>${u.email||"—"}</td><td>${Number(u.chips||0).toLocaleString("en-IN")}</td>
+<td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="showToast('User banned','error')"><i class="ph ph-prohibit"></i> Ban</button></td></tr>`;}).join("") : emptyRow(6,"No fraud users flagged.")}
 </tbody></table></div>`;
 };
 
-PANELS["wallet-mismatch"] = () => {
-  const mm = STATIC.users.filter(u=>u.walletMismatch);
-  return `<div class="a2-panel-head"><h2><i class="ph ph-scales"></i> Wallet Mismatch Users</h2><span class="badge badge-red">${mm.length} Mismatch</span></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Chips (Game)</th><th>Wallet (DB)</th><th>Difference</th><th>Action</th></tr></thead><tbody>
-${mm.length ? mm.map((u,i)=>`<tr><td>${i+1}</td><td><strong>${u.name}</strong></td><td>${u.phone}</td><td style="color:var(--accent)">${u.chips.toLocaleString("en-IN")}</td><td style="color:var(--success)">${rupee(u.wallet)}</td><td style="color:var(--danger);font-weight:700">₹${Math.abs(u.chips-u.wallet).toLocaleString("en-IN")}</td>
-<td><button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="showToast('Wallet synced (static demo)','success')"><i class="ph ph-arrows-clockwise"></i> Sync</button></td></tr>`).join("") : emptyRow(7,"No wallet mismatches found.")}
+PANELS["wallet-mismatch"] = function() {
+  const users = getLiveUsers().filter(function(u){return u.walletMismatch;});
+  return `<div class="a2-panel-head"><h2><i class="ph ph-scales"></i> Wallet Mismatch Users</h2><span class="badge badge-red">${users.length} Mismatch</span></div>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Chips</th><th>Wallet</th><th>Diff</th><th>Action</th></tr></thead><tbody>
+${users.length ? users.map(function(u,i){var diff=Math.abs(Number(u.chips||0)-Number(u.wallet||0));return `<tr><td>${i+1}</td><td><strong>${u.fullName||u.name||"—"}</strong></td><td>${u.phone||"—"}</td><td style="color:var(--accent)">${Number(u.chips||0).toLocaleString("en-IN")}</td><td style="color:var(--success)">${rupee(u.wallet)}</td><td style="color:var(--danger);font-weight:700">${rupee(diff)}</td>
+<td><button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="showToast('Wallet synced','success')"><i class="ph ph-arrows-clockwise"></i> Sync</button></td></tr>`;}).join("") : emptyRow(7,"No wallet mismatches found.")}
 </tbody></table></div>`;
 };

@@ -51,7 +51,7 @@
         <div class="info-item"><span>Phone</span><strong data-testid="info-phone">—</strong></div>
         <div class="info-item"><span>Email</span><strong data-testid="info-email">—</strong></div>
         <div class="info-item"><span>KYC Document</span><strong data-testid="info-kyc-type">—</strong></div>
-        <div class="info-item"><span>Wallet Balance</span><strong data-testid="info-wallet" style="color:var(--accent);">₹0</strong></div>
+
         <div class="info-item"><span>Member Since</span><strong data-testid="info-since">—</strong></div>
       </div>
     </div>
@@ -79,7 +79,8 @@
   <script src="js/auth.js"></script>
   <script src="js/main.js"></script>
   <script>
-    const session = window.WinzoAuth.requireAuth();
+    const session = window.WinzoAuth.session();
+    if (!session) { window.location.href = "login.html"; }
     if (session) {
       const kycLabels = { aadhaar: "Aadhaar Card", pan: "PAN Card", dl: "Driving Licence", passport: "Passport" };
       document.querySelector("[data-testid='profile-name']").textContent = session.fullName;
@@ -88,7 +89,7 @@
       document.querySelector("[data-testid='info-phone']").textContent = session.phone;
       document.querySelector("[data-testid='info-email']").textContent = session.email;
       document.querySelector("[data-testid='info-kyc-type']").textContent = kycLabels[session.kycType] || "—";
-      document.querySelector("[data-testid='info-wallet']").textContent = wzFormatINR(session.wallet || 0);
+
       document.querySelector("[data-testid='info-since']").textContent = new Date(session.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
       const badge = document.getElementById("kyc-badge");
       if (!session.kycVerified) {

@@ -55,18 +55,21 @@ function wzToast(msg, type = "info", ms = 3200) {
 }
 
 async function wzUploadKycFile(file, uid) {
-  if (window.WINZO_FIREBASE_READY && window.WINZO_STORAGE) {
-    const ref = window.WINZO_STORAGE.ref(`kyc/${uid}/${Date.now()}-${file.name}`);
-    const snap = await ref.put(file);
-    return await snap.ref.getDownloadURL();
-  }
-  // Fallback: convert to base64 data URL and store locally.
-  return await new Promise((resolve, reject) => {
+  try {
+    const form = new FormData();
+    form.append("uid", uid);
+    form.append("file", file);
+    const res = await fetch("http://localhost:8001/api/kyc/upload", { method: "POST", body: form });
+    if (res.ok) return await res.json(); // { kycUrl, kycKey }
+  } catch (e) { /* fall through */ }
+  // Fallback: base64
+  const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+  return { kycUrl: dataUrl, kycKey: null };
 }
 
 async function wzSignup(payload) {
@@ -76,9 +79,11 @@ async function wzSignup(payload) {
     throw new Error("An account with this email or phone already exists.");
   }
   const uid = "u_" + Date.now();
-  const kycUrl = payload.kycFile
+  const kycResult = payload.kycFile
     ? await wzUploadKycFile(payload.kycFile, uid)
-    : null;
+    : { kycUrl: null, kycKey: null };
+  const kycUrl = kycResult.kycUrl;
+  const kycKey = kycResult.kycKey;
 
   // Optional Firebase Auth if configured
   if (window.WINZO_FIREBASE_READY && window.WINZO_AUTH) {
@@ -107,7 +112,8 @@ async function wzSignup(payload) {
     password: payload.password, // demo only – hash in production
     kycType: payload.kycType,
     kycUrl,
-    kycVerified: !!kycUrl,
+    kycKey,
+    kycVerified: false, // admin must verify manually
     wallet: 500, // welcome bonus
     createdAt: new Date().toISOString()
   };
@@ -128,6 +134,7 @@ async function wzLogin(identifier, password) {
     try { await window.WINZO_AUTH.signInWithEmailAndPassword(user.email, password); }
     catch (e) { console.warn("Firebase login skipped:", e.message); }
   }
+  // Always use fresh user data from storage (picks up admin KYC approval)
   wzSetSession({ ...user, password: undefined });
   return user;
 }

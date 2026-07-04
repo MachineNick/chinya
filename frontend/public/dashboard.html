@@ -52,25 +52,59 @@
   <!-- UPI PAY MODAL -->
   <div id="upi-modal" class="modal" hidden data-testid="upi-modal">
     <div class="modal-backdrop"></div>
-    <div class="modal-panel">
+    <div class="modal-panel" style="max-width:440px;">
       <div class="modal-head">
-        <h3><i class="ph-fill ph-qr-code" style="color:var(--accent);"></i> Pay via UPI</h3>
+        <h3><i class="ph-fill ph-qr-code" style="color:var(--accent);"></i> Add Chips via UPI</h3>
         <button class="modal-close" id="close-upi"><i class="ph ph-x"></i></button>
       </div>
-      <div style="text-align:center;">
-        <img id="upi-qr" alt="UPI QR" style="width:220px;height:220px;background:#fff;padding:12px;border-radius:8px;margin:0 auto 16px;" />
-        <div style="font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Scan or copy UPI ID</div>
-        <div style="display:flex;gap:8px;align-items:center;justify-content:center;background:#0F0F16;border:1px dashed rgba(255,215,0,0.4);border-radius:6px;padding:10px 14px;margin-bottom:16px;">
-          <strong id="upi-id-text" style="color:var(--accent);font-family:var(--font-head);letter-spacing:0.5px;" data-testid="upi-id-text">—</strong>
-          <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" id="copy-upi" data-testid="copy-upi-btn"><i class="ph ph-copy"></i> Copy</button>
+
+      <!-- QR / Phone placeholder (add manually later) -->
+      <!--
+      <div style="text-align:center;margin-bottom:20px;">
+        <img src="YOUR_QR_CODE_IMAGE_URL" alt="UPI QR" style="width:200px;height:200px;border-radius:8px;" />
+        <p style="margin-top:8px;color:var(--accent);font-weight:700;">UPI: YOUR_UPI_ID@bank</p>
+        <p style="color:var(--text-secondary);font-size:13px;">Or pay to phone: +91 XXXXXXXXXX</p>
+      </div>
+      -->
+
+      <div class="form" style="gap:16px;display:flex;flex-direction:column;">
+        <!-- Payment Method -->
+        <div class="field">
+          <label>Select Payment Method</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+            <label class="pay-method-opt">
+              <input type="radio" name="pay-method" value="PhonePe" />
+              <span><i class="ph-fill ph-device-mobile"></i> PhonePe</span>
+            </label>
+            <label class="pay-method-opt">
+              <input type="radio" name="pay-method" value="Paytm" />
+              <span><i class="ph-fill ph-wallet"></i> Paytm</span>
+            </label>
+            <label class="pay-method-opt">
+              <input type="radio" name="pay-method" value="GooglePay" />
+              <span><i class="ph-fill ph-google-logo"></i> Google Pay</span>
+            </label>
+          </div>
         </div>
-        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">
-          After paying, send a screenshot to our admin on WhatsApp / call.<br/>
-          Chips will be credited within a few minutes.
+
+        <!-- Amount -->
+        <div class="field">
+          <label for="upi-amount">Enter Amount (₹)</label>
+          <input id="upi-amount" type="number" min="1" placeholder="e.g. 500" style="width:100%;" />
+        </div>
+
+        <!-- Transaction ID -->
+        <div class="field">
+          <label for="upi-txn-id">Transaction ID / UTR</label>
+          <input id="upi-txn-id" type="text" placeholder="Enter your payment transaction ID" style="width:100%;" />
+        </div>
+
+        <button class="btn btn-primary btn-block" id="upi-submit-btn">
+          <i class="ph-fill ph-paper-plane-tilt"></i> Submit Request
+        </button>
+        <p style="font-size:12px;color:var(--text-secondary);text-align:center;margin:0;">
+          Chips will be credited after admin verification.
         </p>
-        <a id="upi-whatsapp" class="btn btn-primary btn-block" target="_blank" rel="noopener" data-testid="upi-whatsapp-btn">
-          <i class="ph-fill ph-whatsapp-logo"></i> Send Proof on WhatsApp
-        </a>
       </div>
     </div>
   </div>
@@ -194,6 +228,8 @@
   <script src="js/main.js"></script>
   <script>
     const session = window.WinzoAuth.requireAuth();
+    if (session) { init(); }
+    function init() {
     const GAME_LABELS = {
       full: "Full Game", "1goti": "1 Goti", "2goti": "2 Goti", "3goti": "3 Goti",
       ulta: "Ulta", "1six": "1 Six", snake: "Snake & Lader"
@@ -203,7 +239,7 @@
     function refreshView() {
       const users = window.WinzoAuth.getUsers();
       const fresh = users.find(u => u.uid === session.uid);
-      const chips = Number((fresh && fresh.chips) || session.chips || 0);
+      const chips = Number((fresh && (fresh.chips ?? fresh.wallet)) || session.chips || session.wallet || 0);
       document.getElementById("wallet-chips").textContent = chips.toLocaleString("en-IN");
 
       const settings = window.WinzoSettings.get();
@@ -213,7 +249,7 @@
 
       renderSets();
     }
-    if (session) {
+    if (true) {
       document.querySelectorAll("[data-user-name]").forEach(el => el.textContent = session.fullName.split(" ")[0]);
       refreshView();
       setInterval(refreshView, 3000); // pick up admin changes live
@@ -274,6 +310,17 @@
       const val = Number(document.getElementById("setValue").value);
       const gt  = document.getElementById("setGameType").value;
       if (!val || val < 1) return;
+
+      // KYC + chips check — always read fresh from storage
+      const users = window.WinzoAuth.getUsers();
+      const fresh = users.find(u => u.uid === session.uid);
+      if (!fresh || !fresh.kycVerified) {
+        return window.WinzoAuth.toast("Your account is pending admin approval. You cannot play yet.", "error", 4000);
+      }
+      const currentChips = Number((fresh && (fresh.chips ?? fresh.wallet)) || 0);
+      if (val > currentChips) {
+        return window.WinzoAuth.toast(`Not enough chips! You have ${currentChips.toLocaleString("en-IN")} chips. Please add more to play.`, "error", 4000);
+      }
       const arr = window.WinzoSets.get();
       arr.push({
         id: "s_" + Date.now(),
@@ -291,21 +338,28 @@
 
     // ---- UPI Pay modal ----
     const upiModal = document.getElementById("upi-modal");
-    document.getElementById("close-upi").addEventListener("click", () => upiModal.hidden = true);
-    upiModal.querySelector(".modal-backdrop").addEventListener("click", () => upiModal.hidden = true);
-    document.getElementById("open-upi").addEventListener("click", () => {
-      const s = window.WinzoSettings.get();
-      const upiUri = `upi://pay?pa=${encodeURIComponent(s.upiId)}&pn=${encodeURIComponent(s.upiName)}&cu=INR`;
-      document.getElementById("upi-id-text").textContent = s.upiId;
-      document.getElementById("upi-qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(upiUri)}`;
-      const wa = s.bonusPhone.replace(/\D/g, "");
-      const msg = encodeURIComponent(`Hi WinzoIndia, I paid to ${s.upiId}. My username: ${session.fullName}. Please add chips.`);
-      document.getElementById("upi-whatsapp").href = `https://wa.me/${wa}?text=${msg}`;
-      upiModal.hidden = false;
-    });
-    document.getElementById("copy-upi").addEventListener("click", async () => {
-      try { await navigator.clipboard.writeText(document.getElementById("upi-id-text").textContent); window.WinzoAuth.toast("UPI ID copied!", "success"); }
-      catch { window.WinzoAuth.toast("Copy failed. Long-press to select.", "error"); }
+    const openUpiModal  = () => upiModal.removeAttribute("hidden");
+    const closeUpiModal = () => upiModal.setAttribute("hidden", "");
+    document.getElementById("close-upi").addEventListener("click", closeUpiModal);
+    upiModal.querySelector(".modal-backdrop").addEventListener("click", closeUpiModal);
+    document.getElementById("open-upi").addEventListener("click", openUpiModal);
+    document.getElementById("upi-submit-btn").addEventListener("click", () => {
+      const method = document.querySelector("input[name='pay-method']:checked")?.value;
+      const amount = document.getElementById("upi-amount").value.trim();
+      const txnId  = document.getElementById("upi-txn-id").value.trim();
+      if (!method) return window.WinzoAuth.toast("Please select a payment method.", "error");
+      if (!amount || Number(amount) < 1) return window.WinzoAuth.toast("Enter a valid amount.", "error");
+      if (!txnId) return window.WinzoAuth.toast("Please enter your Transaction ID.", "error");
+      // Save deposit request
+      const deps = JSON.parse(localStorage.getItem("winzo_deposits") || "[]");
+      deps.unshift({ id: "dep_" + Date.now(), user: session.fullName, userPhone: session.phone || "—", userEmail: session.email || "—",
+        amount: Number(amount), type: "Deposit Request", method, txnId, status: "pending", time: new Date().toLocaleString("en-IN") });
+      localStorage.setItem("winzo_deposits", JSON.stringify(deps));
+      upiModal.hidden = true;
+      document.getElementById("upi-amount").value = "";
+      document.getElementById("upi-txn-id").value = "";
+      document.querySelectorAll("input[name='pay-method']").forEach(r => r.checked = false);
+      window.WinzoAuth.toast("Request submitted! Chips will be added after admin verification.", "success", 4000);
     });
 
     // ---- Report Opponent modal ----
@@ -346,6 +400,7 @@
       proofInfo.textContent = "";
       window.WinzoAuth.toast("Report submitted. Admin will review & reward you.", "success");
     });
+    } // end init()
   </script>
 </body>
 </html>
