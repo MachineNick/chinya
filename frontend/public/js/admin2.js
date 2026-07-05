@@ -39,7 +39,36 @@ window.adminViewKyc = async function (key) {
   } catch (e) { showToast("Could not load document. Backend may be offline.", "error"); }
 };
 
-window.approveDepositRequest = function(id) {
+window.approveWithdrawRequest = function(id) {
+  var wds = getLiveWithdrawals();
+  var w = wds.find(function(x){ return x.id === id; });
+  if (!w) return;
+  w.status = "approved";
+  // Deduct chips from user
+  var users = getLiveUsers();
+  var u = users.find(function(x){ return x.fullName === w.user || x.phone === w.userPhone || x.email === w.userEmail; });
+  if (u) {
+    u.chips = Math.max(0, (Number(u.chips) || 0) - Number(w.amount));
+    u.wallet = u.chips;
+    saveLiveUsers(users);
+    if (window.WINZO_SB) window.WINZO_SB.from("users").update({ chips: u.chips }).eq("uid", u.uid).then(function(){});
+  }
+  localStorage.setItem("winzo_withdraws", JSON.stringify(wds));
+  if (window.WINZO_SB) window.WINZO_SB.from("withdraws").update({ status: "approved" }).eq("id", id).then(function(){});
+  showToast("Withdrawal approved & ₹" + w.amount + " deducted from " + w.user, "success");
+  window.syncAndReload("recent-withdrawals", "Recent Withdrawal Requests");
+};
+
+window.rejectWithdrawRequest = function(id) {
+  var wds = getLiveWithdrawals();
+  var w = wds.find(function(x){ return x.id === id; });
+  if (!w) return;
+  w.status = "rejected";
+  localStorage.setItem("winzo_withdraws", JSON.stringify(wds));
+  if (window.WINZO_SB) window.WINZO_SB.from("withdraws").update({ status: "rejected" }).eq("id", id).then(function(){});
+  showToast("Withdrawal rejected.", "error");
+  window.syncAndReload("recent-withdrawals", "Recent Withdrawal Requests");
+};
   var deps = getLiveDeposits();
   var d = deps.find(function(x){ return x.id === id; });
   if (!d) return;
