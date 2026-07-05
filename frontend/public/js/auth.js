@@ -213,20 +213,61 @@ function wzSaveSettings(patch) {
 }
 window.WinzoSettings = { get: wzGetSettings, save: wzSaveSettings };
 
-// ---- Global sets pool ----
+// ---- Global sets pool (Supabase + localStorage) ----
 const WZ_SETS_KEY = "winzo_sets_global";
-function wzGetSets() {
-  try { return JSON.parse(localStorage.getItem(WZ_SETS_KEY) || "[]"); }
-  catch { return []; }
+async function wzGetSetsAsync() {
+  if (window.WINZO_SB) {
+    try {
+      const { data } = await window.WINZO_SB.from("challenges").select("*").order("at", { ascending: false });
+      if (data) {
+        const mapped = data.map(r => ({ id:r.id, gameId:r.game_id, uid:r.uid, byName:r.by_name, value:r.value, gameType:r.game_type, acceptedBy:r.accepted_by, acceptedByName:r.accepted_by_name, acceptedAt:r.accepted_at, roomCode:r.room_code, at:r.at }));
+        localStorage.setItem(WZ_SETS_KEY, JSON.stringify(mapped));
+        return mapped;
+      }
+    } catch(e) { console.warn("Supabase sets fetch failed:", e.message); }
+  }
+  try { return JSON.parse(localStorage.getItem(WZ_SETS_KEY) || "[]"); } catch { return []; }
 }
-function wzSaveSets(arr) { localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr)); }
-window.WinzoSets = { get: wzGetSets, save: wzSaveSets };
+function wzGetSets() {
+  try { return JSON.parse(localStorage.getItem(WZ_SETS_KEY) || "[]"); } catch { return []; }
+}
+async function wzSaveSetsAsync(arr) {
+  localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr));
+  if (!window.WINZO_SB) return;
+  // Upsert all
+  try {
+    const rows = arr.map(s => ({ id:s.id, game_id:s.gameId||null, uid:s.uid, by_name:s.byName, value:s.value, game_type:s.gameType, accepted_by:s.acceptedBy||null, accepted_by_name:s.acceptedByName||null, accepted_at:s.acceptedAt||null, room_code:s.roomCode||null, at:s.at }));
+    await window.WINZO_SB.from("challenges").upsert(rows);
+  } catch(e) { console.warn("Supabase sets save failed:", e.message); }
+}
+function wzSaveSets(arr) {
+  localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr));
+  wzSaveSetsAsync(arr);
+}
+window.WinzoSets = { get: wzGetSets, getAsync: wzGetSetsAsync, save: wzSaveSets };
+
+// ---- Deposits (Supabase + localStorage) ----
+async function wzSaveDepositAsync(dep) {
+  if (!window.WINZO_SB) return;
+  try {
+    await window.WINZO_SB.from("deposits").upsert({ id:dep.id, uid:dep.uid||null, user_name:dep.user, user_phone:dep.userPhone, user_email:dep.userEmail, amount:dep.amount, method:dep.method, txn_id:dep.txnId||null, status:dep.status });
+  } catch(e) { console.warn("Supabase deposit save failed:", e.message); }
+}
+window.WinzoDeposits = { saveOne: wzSaveDepositAsync };
+
+// ---- Results (Supabase + localStorage) ----
+async function wzSaveResultAsync(res) {
+  if (!window.WINZO_SB) return;
+  try {
+    await window.WINZO_SB.from("results").upsert({ id:res.id, challenge_id:res.challengeId, game_id:res.gameId||null, submitter_uid:res.submitterUid, submitter_name:res.submitterName, submitter_phone:res.submitterPhone, opponent_uid:res.opponentUid, opponent_name:res.opponentName, opponent_phone:res.opponentPhone, game_type:res.gameType, amount:res.amount, room_code:res.roomCode, result:res.result, proof_url:res.proofUrl, status:res.status });
+  } catch(e) { console.warn("Supabase result save failed:", e.message); }
+}
+window.WinzoResults = { saveOne: wzSaveResultAsync };
 
 // ---- Reports ----
 const WZ_REPORTS_KEY = "winzo_reports";
 function wzGetReports() {
-  try { return JSON.parse(localStorage.getItem(WZ_REPORTS_KEY) || "[]"); }
-  catch { return []; }
+  try { return JSON.parse(localStorage.getItem(WZ_REPORTS_KEY) || "[]"); } catch { return []; }
 }
 function wzSaveReports(arr) { localStorage.setItem(WZ_REPORTS_KEY, JSON.stringify(arr)); }
 window.WinzoReports = { get: wzGetReports, save: wzSaveReports };

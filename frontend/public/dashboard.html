@@ -121,6 +121,7 @@
           var deps = JSON.parse(localStorage.getItem('winzo_deposits')||'[]');
           deps.unshift({id:'dep_'+Date.now(),user:s.fullName,userPhone:s.phone||'—',userEmail:s.email||'—',amount:Number(amount),type:'Deposit Request',method:method,txnId:txnId,status:'pending',time:new Date().toLocaleString('en-IN')});
           localStorage.setItem('winzo_deposits',JSON.stringify(deps));
+          if(window.WinzoDeposits) window.WinzoDeposits.saveOne(deps[0]);
           document.getElementById('upi-modal').setAttribute('hidden','');
           document.getElementById('upi-amount').value='';
           document.getElementById('upi-txn-id').value='';
@@ -508,6 +509,7 @@
         at: new Date().toLocaleString("en-IN")
       });
       localStorage.setItem("winzo_results", JSON.stringify(results));
+      if (window.WinzoResults) window.WinzoResults.saveOne(results[0]);
       window.WinzoAuth.toast("Result submitted! Admin will review.", "success", 4000);
       renderMatchRoom();
     };

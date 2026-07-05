@@ -79,6 +79,7 @@ window.adminChipOp = function (uid, direction) {
   u.chips = Math.max(0, (Number(u.chips ?? u.wallet) || 0) + (direction * amt));
   u.wallet = u.chips;
   saveLiveUsers(users);
+  if (window.WINZO_SB) window.WINZO_SB.from("users").update({ chips: u.chips }).eq("uid", uid).then(function(){});
   // Log to transaction history
   var txns = getLiveDeposits();
   txns.unshift({
@@ -112,6 +113,7 @@ window.adminToggleKyc = function (uid, approve) {
   u.kycVerified = approve;
   if (approve) { delete u.kycRejected; } else { u.kycRejected = true; }
   saveLiveUsers(users);
+  if (window.WINZO_SB) window.WINZO_SB.from("users").update({ kyc_verified: approve }).eq("uid", uid).then(function(){});
   var session = JSON.parse(localStorage.getItem("winzo_session") || "null");
   if (session && session.uid === uid) {
     session.kycVerified = approve;
