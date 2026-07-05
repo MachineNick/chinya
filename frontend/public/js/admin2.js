@@ -332,15 +332,32 @@ window.showAddBlacklist = function () {
 
   document.getElementById("gate-form").addEventListener("submit", function (e) {
     e.preventDefault();
-    var settings = window.WinzoSettings ? window.WinzoSettings.get() : { adminPass: "winzo-admin-2026" };
     var val = document.getElementById("passcode").value;
-    if (val === settings.adminPass) {
+    var settings = window.WinzoSettings ? window.WinzoSettings.get() : {};
+    var correctPass = (settings.adminPass && settings.adminPass.trim()) || "winzo-admin-2026";
+    if (val === correctPass) {
       sessionStorage.setItem(GATE_KEY, "1");
       unlock();
     } else {
-      var err = document.getElementById("gate-error");
-      err.textContent = "Incorrect passcode.";
-      err.style.display = "block";
+      // Retry after fresh Supabase load in case settings weren't loaded yet
+      if (window.WinzoSettings && window.WinzoSettings.load) {
+        window.WinzoSettings.load().then(function() {
+          var fresh = window.WinzoSettings.get();
+          var freshPass = (fresh.adminPass && fresh.adminPass.trim()) || "winzo-admin-2026";
+          if (val === freshPass) {
+            sessionStorage.setItem(GATE_KEY, "1");
+            unlock();
+          } else {
+            var err = document.getElementById("gate-error");
+            err.textContent = "Incorrect passcode.";
+            err.style.display = "block";
+          }
+        });
+      } else {
+        var err = document.getElementById("gate-error");
+        err.textContent = "Incorrect passcode.";
+        err.style.display = "block";
+      }
     }
   });
 
