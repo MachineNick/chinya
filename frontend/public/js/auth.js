@@ -207,11 +207,26 @@ function wzGetSettings() {
     };
   } catch { return { bonusPhone: "+91 99999 99999", adminPass: "winzo-admin-2026", upiId: "winzoindia@upi", upiName: "WinzoIndia" }; }
 }
+async function wzLoadSettingsFromSupabase() {
+  if (!window.WINZO_SB) return;
+  try {
+    const { data } = await window.WINZO_SB.from("settings").select("key,value");
+    if (!data || !data.length) return;
+    const s = {};
+    data.forEach(function(r){ s[r.key] = r.value; });
+    localStorage.setItem(WZ_SETTINGS_KEY, JSON.stringify(s));
+  } catch(e) { console.warn("Settings load failed:", e.message); }
+}
 function wzSaveSettings(patch) {
   const cur = wzGetSettings();
-  localStorage.setItem(WZ_SETTINGS_KEY, JSON.stringify({ ...cur, ...patch }));
+  const merged = { ...cur, ...patch };
+  localStorage.setItem(WZ_SETTINGS_KEY, JSON.stringify(merged));
+  if (!window.WINZO_SB) return;
+  Object.entries(patch).forEach(function([key, value]) {
+    window.WINZO_SB.from("settings").upsert({ key, value }).then(function(){});
+  });
 }
-window.WinzoSettings = { get: wzGetSettings, save: wzSaveSettings };
+window.WinzoSettings = { get: wzGetSettings, save: wzSaveSettings, load: wzLoadSettingsFromSupabase };
 
 // ---- Global sets pool (Supabase + localStorage) ----
 const WZ_SETS_KEY = "winzo_sets_global";
@@ -270,4 +285,24 @@ function wzGetReports() {
   try { return JSON.parse(localStorage.getItem(WZ_REPORTS_KEY) || "[]"); } catch { return []; }
 }
 function wzSaveReports(arr) { localStorage.setItem(WZ_REPORTS_KEY, JSON.stringify(arr)); }
-window.WinzoReports = { get: wzGetReports, save: wzSaveReports };
+async function wzSaveReportAsync(rep) {
+  if (!window.WINZO_SB) return;
+  try {
+    await window.WINZO_SB.from("reports").upsert({ id:rep.id, reporter_uid:rep.reporterUid, reporter_name:rep.reporterName, opponent:rep.opponent, details:rep.details, proof_url:rep.proofUrl, status:rep.status });
+  } catch(e) { console.warn("Supabase report save failed:", e.message); }
+}
+window.WinzoReports = { get: wzGetReports, save: wzSaveReports, saveOne: wzSaveReportAsync };
+
+// ---- Withdrawals ----
+const WZ_WITHDRAWS_KEY = "winzo_withdraws";
+function wzGetWithdraws() {
+  try { return JSON.parse(localStorage.getItem(WZ_WITHDRAWS_KEY) || "[]"); } catch { return []; }
+}
+function wzSaveWithdraws(arr) { localStorage.setItem(WZ_WITHDRAWS_KEY, JSON.stringify(arr)); }
+async function wzSaveWithdrawAsync(w) {
+  if (!window.WINZO_SB) return;
+  try {
+    await window.WINZO_SB.from("withdraws").upsert({ id:w.id, uid:w.uid||null, user_name:w.user, user_phone:w.userPhone, user_email:w.userEmail, amount:w.amount, method:w.method, upi_id:w.upiId||null, status:w.status });
+  } catch(e) { console.warn("Supabase withdraw save failed:", e.message); }
+}
+window.WinzoWithdraws = { get: wzGetWithdraws, save: wzSaveWithdraws, saveOne: wzSaveWithdrawAsync };

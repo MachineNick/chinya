@@ -146,8 +146,45 @@
       </div>
       <div class="wallet-chips-value" data-testid="wallet-chips-value" id="wallet-chips">0</div>
       <p class="wallet-chips-note">Chips are added by our admin after successful deposit confirmation.</p>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="document.getElementById('withdraw-modal').removeAttribute('hidden')">
+        <i class="ph-fill ph-arrow-up-right"></i> Withdraw Chips
+      </button>
     </div>
   </section>
+
+  <!-- WITHDRAW MODAL -->
+  <div id="withdraw-modal" class="modal" hidden>
+    <div class="modal-backdrop" onclick="document.getElementById('withdraw-modal').setAttribute('hidden','')"></div>
+    <div class="modal-panel" style="max-width:440px;">
+      <div class="modal-head">
+        <h3><i class="ph-fill ph-arrow-up-right" style="color:var(--accent);"></i> Withdraw Chips</h3>
+        <button class="modal-close" onclick="document.getElementById('withdraw-modal').setAttribute('hidden','')"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="form" style="gap:16px;display:flex;flex-direction:column;">
+        <div class="field">
+          <label for="wd-amount">Amount (₹)</label>
+          <input id="wd-amount" type="number" min="1" placeholder="e.g. 200" style="width:100%;" />
+        </div>
+        <div class="field">
+          <label for="wd-method">Payment Method</label>
+          <select id="wd-method" style="width:100%;">
+            <option value="UPI">UPI</option>
+            <option value="PhonePe">PhonePe</option>
+            <option value="Paytm">Paytm</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="wd-upi">UPI ID / Account No.</label>
+          <input id="wd-upi" type="text" placeholder="yourname@upi or account number" style="width:100%;" />
+        </div>
+        <button class="btn btn-primary btn-block" onclick="submitWithdraw()">
+          <i class="ph-fill ph-paper-plane-tilt"></i> Submit Request
+        </button>
+        <p style="font-size:12px;color:var(--text-secondary);text-align:center;margin:0;">Withdrawals are processed by admin within 24 hours.</p>
+      </div>
+    </div>
+  </div>
 
   <!-- DISCLAIMER + Report -->
   <section class="container" style="padding-top:24px;">
@@ -267,7 +304,20 @@
 
     const GAME_LABELS = { full:"Full Game","1goti":"1 Goti","2goti":"2 Goti","3goti":"3 Goti",ulta:"Ulta","1six":"1 Six",snake:"Snake & Ladder" };
 
-    function refreshView() {
+    async function refreshView() {
+      // Fetch fresh user data from Supabase
+      if (window.WINZO_SB) {
+        try {
+          const { data } = await window.WINZO_SB.from("users").select("*").eq("uid", session.uid).single();
+          if (data) {
+            const users = window.WinzoAuth.getUsers();
+            const idx = users.findIndex(u => u.uid === session.uid);
+            const merged = { ...session, chips: data.chips||0, wallet: data.chips||0, kycVerified: data.kyc_verified };
+            if (idx >= 0) users[idx] = { ...users[idx], ...merged }; else users.push(merged);
+            window.WinzoAuth.saveUsers(users);
+          }
+        } catch(e) { /* fall through to cache */ }
+      }
       const users = window.WinzoAuth.getUsers();
       const fresh = users.find(u => u.uid === session.uid);
       document.getElementById("wallet-chips").textContent = Number(fresh && (fresh.chips ?? fresh.wallet) || 0).toLocaleString("en-IN");
@@ -280,7 +330,7 @@
     }
     document.querySelectorAll("[data-user-name]").forEach(el => el.textContent = session.fullName.split(" ")[0]);
     refreshView();
-    setInterval(refreshView, 3000);
+    setInterval(refreshView, 5000);
 
     function renderSets() {
       const listEl = document.getElementById("sets-list");
@@ -516,6 +566,28 @@
     document.getElementById("open-report").addEventListener("click", () => document.getElementById("report-modal").hidden = false);
     document.getElementById("close-report").addEventListener("click", () => document.getElementById("report-modal").hidden = true);
     document.getElementById("report-modal").querySelector(".modal-backdrop").addEventListener("click", () => document.getElementById("report-modal").hidden = true);
+
+    window.submitWithdraw = function() {
+      const amount = Number(document.getElementById("wd-amount").value);
+      const method = document.getElementById("wd-method").value;
+      const upiId  = document.getElementById("wd-upi").value.trim();
+      if (!amount || amount < 1) return window.WinzoAuth.toast("Enter a valid amount.", "error");
+      if (!upiId) return window.WinzoAuth.toast("Enter your UPI ID or account number.", "error");
+      const users = window.WinzoAuth.getUsers();
+      const fresh = users.find(u => u.uid === session.uid);
+      const chips = Number(fresh && (fresh.chips ?? fresh.wallet) || 0);
+      if (amount > chips) return window.WinzoAuth.toast(`Insufficient chips. Balance: ₹${chips.toLocaleString("en-IN")}`, "error", 4000);
+      const w = { id:"wd_"+Date.now(), uid:session.uid, user:session.fullName, userPhone:session.phone||"—", userEmail:session.email||"—", amount, method, upiId, status:"pending", time:new Date().toLocaleString("en-IN") };
+      const wds = window.WinzoWithdraws.get();
+      wds.unshift(w);
+      window.WinzoWithdraws.save(wds);
+      window.WinzoWithdraws.saveOne(w);
+      document.getElementById("withdraw-modal").setAttribute("hidden","");
+      document.getElementById("wd-amount").value = "";
+      document.getElementById("wd-upi").value = "";
+      window.WinzoAuth.toast("Withdrawal request submitted! Admin will process within 24h.", "success", 4000);
+    };
+
     document.getElementById("rProof").addEventListener("change", function() {
       const f = this.files[0];
       if (f) document.getElementById("rProofInfo").textContent = `✓ ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`;
@@ -527,8 +599,10 @@
       if (f.size > 5*1024*1024) return window.WinzoAuth.toast("File must be under 5 MB.", "error");
       const proofUrl = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
       const reports = window.WinzoReports.get();
-      reports.push({ id:"r_"+Date.now(), reporterUid:session.uid, reporterName:session.fullName, opponent:document.getElementById("rOpponent").value.trim(), details:document.getElementById("rDetails").value.trim(), proofUrl, status:"pending", at:Date.now() });
+      const rep = { id:"r_"+Date.now(), reporterUid:session.uid, reporterName:session.fullName, opponent:document.getElementById("rOpponent").value.trim(), details:document.getElementById("rDetails").value.trim(), proofUrl, status:"pending", at:Date.now() };
+      reports.push(rep);
       window.WinzoReports.save(reports);
+      window.WinzoReports.saveOne(rep);
       document.getElementById("report-modal").hidden = true;
       e.target.reset();
       document.getElementById("rProofInfo").textContent = "";

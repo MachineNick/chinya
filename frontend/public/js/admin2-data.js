@@ -1,40 +1,140 @@
 // ============================================================
-// WinzoIndia Admin v2 — Data Layer
-// Users, sets, reports are read LIVE from localStorage (synced
-// with signup/dashboard). Static seeds used for games/tournaments
-// until Firebase Firestore is wired in.
-// TODO: Replace getData() calls with Firestore queries once
-// Firebase credentials are added to firebase-config.js.
-// Required env vars:
-//   FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
-//   FIREBASE_STORAGE_BUCKET, FIREBASE_MESSAGING_SENDER_ID, FIREBASE_APP_ID
+// WinzoIndia Admin v2 — Data Layer (Supabase-first)
+// Reads live from Supabase; falls back to localStorage.
 // ============================================================
 
-// ── Live localStorage readers (same keys as auth.js) ─────────
-function getLiveUsers() {
+async function sbFetch(table, order) {
+  if (!window.WINZO_SB) return null;
+  try {
+    let q = window.WINZO_SB.from(table).select("*");
+    if (order) q = q.order(order, { ascending: false });
+    const { data, error } = await q;
+    if (error) throw error;
+    return data;
+  } catch(e) { console.warn("Supabase fetch failed [" + table + "]:", e.message); return null; }
+}
+
+// ── Map Supabase rows → app shape ─────────────────────────────
+function mapUser(r) {
+  return { uid:r.uid, fullName:r.full_name, phone:r.phone, email:r.email,
+    kycType:r.kyc_type, kycUrl:r.kyc_url, kycKey:r.kyc_key||null,
+    kycVerified:r.kyc_verified, chips:r.chips||0, wallet:r.chips||0,
+    createdAt:r.created_at };
+}
+function mapSet(r) {
+  return { id:r.id, gameId:r.game_id, uid:r.uid, byName:r.by_name, value:r.value,
+    gameType:r.game_type, acceptedBy:r.accepted_by, acceptedByName:r.accepted_by_name,
+    acceptedAt:r.accepted_at, roomCode:r.room_code, at:r.at };
+}
+function mapDeposit(r) {
+  return { id:r.id, uid:r.uid, user:r.user_name, userPhone:r.user_phone,
+    userEmail:r.user_email, amount:r.amount, type:r.type||"Deposit",
+    method:r.method, txnId:r.txn_id, status:r.status, time:r.created_at };
+}
+function mapWithdraw(r) {
+  return { id:r.id, uid:r.uid, user:r.user_name, userPhone:r.user_phone,
+    userEmail:r.user_email, amount:r.amount, method:r.method,
+    upiId:r.upi_id, status:r.status, time:r.created_at };
+}
+function mapReport(r) {
+  return { id:r.id, reporterUid:r.reporter_uid, reporterName:r.reporter_name,
+    opponent:r.opponent, details:r.details, proofUrl:r.proof_url,
+    status:r.status, at:r.created_at };
+}
+
+// ── Live readers (Supabase-first, localStorage fallback) ──────
+async function getLiveUsersAsync() {
+  const data = await sbFetch("users", "created_at");
+  if (data) { const mapped = data.map(mapUser); localStorage.setItem("winzo_users", JSON.stringify(mapped)); return mapped; }
   try { return JSON.parse(localStorage.getItem("winzo_users") || "[]"); } catch(e) { return []; }
 }
-function getLiveSets() {
+async function getLiveSetsAsync() {
+  const data = await sbFetch("challenges", "at");
+  if (data) { const mapped = data.map(mapSet); localStorage.setItem("winzo_sets_global", JSON.stringify(mapped)); return mapped; }
   try { return JSON.parse(localStorage.getItem("winzo_sets_global") || "[]"); } catch(e) { return []; }
 }
-function getLiveReports() {
-  try { return JSON.parse(localStorage.getItem("winzo_reports") || "[]"); } catch(e) { return []; }
-}
-function getLiveDeposits() {
+async function getLiveDepositsAsync() {
+  const data = await sbFetch("deposits", "created_at");
+  if (data) { const mapped = data.map(mapDeposit); localStorage.setItem("winzo_deposits", JSON.stringify(mapped)); return mapped; }
   try { return JSON.parse(localStorage.getItem("winzo_deposits") || "[]"); } catch(e) { return []; }
 }
-function getLiveWithdrawals() {
+async function getLiveWithdrawalsAsync() {
+  const data = await sbFetch("withdraws", "created_at");
+  if (data) { const mapped = data.map(mapWithdraw); localStorage.setItem("winzo_withdraws", JSON.stringify(mapped)); return mapped; }
   try { return JSON.parse(localStorage.getItem("winzo_withdraws") || "[]"); } catch(e) { return []; }
 }
-function getLiveBlacklist() {
-  try { return JSON.parse(localStorage.getItem("winzo_blacklist") || "[]"); } catch(e) { return []; }
+async function getLiveReportsAsync() {
+  const data = await sbFetch("reports", "created_at");
+  if (data) { const mapped = data.map(mapReport); localStorage.setItem("winzo_reports", JSON.stringify(mapped)); return mapped; }
+  try { return JSON.parse(localStorage.getItem("winzo_reports") || "[]"); } catch(e) { return []; }
 }
+
+// Sync wrappers — panels call these, await result, then re-render
+function getLiveUsers()      { try { return JSON.parse(localStorage.getItem("winzo_users") || "[]"); } catch(e) { return []; } }
+function getLiveSets()       { try { return JSON.parse(localStorage.getItem("winzo_sets_global") || "[]"); } catch(e) { return []; } }
+function getLiveReports()    { try { return JSON.parse(localStorage.getItem("winzo_reports") || "[]"); } catch(e) { return []; } }
+function getLiveDeposits()   { try { return JSON.parse(localStorage.getItem("winzo_deposits") || "[]"); } catch(e) { return []; } }
+function getLiveWithdrawals(){ try { return JSON.parse(localStorage.getItem("winzo_withdraws") || "[]"); } catch(e) { return []; } }
+function getLiveBlacklist()  { try { return JSON.parse(localStorage.getItem("winzo_blacklist") || "[]"); } catch(e) { return []; } }
 function saveLiveBlacklist(arr) {
   localStorage.setItem("winzo_blacklist", JSON.stringify(arr));
+  if (!window.WINZO_SB) return;
+  // Full replace: delete all then insert
+  window.WINZO_SB.from("blacklist").delete().neq("id","__none__").then(function() {
+    if (!arr.length) return;
+    window.WINZO_SB.from("blacklist").insert(arr.map(function(b){
+      return { id:b.id, name:b.name, reason:b.reason||"" };
+    })).then(function(){});
+  });
+}
+async function getLiveBlacklistAsync() {
+  const data = await sbFetch("blacklist", "created_at");
+  if (data) {
+    const mapped = data.map(function(r){ return { id:r.id, name:r.name, reason:r.reason, added:r.created_at }; });
+    localStorage.setItem("winzo_blacklist", JSON.stringify(mapped));
+    return mapped;
+  }
+  return getLiveBlacklist();
 }
 function saveLiveUsers(arr) {
   localStorage.setItem("winzo_users", JSON.stringify(arr));
+  if (!window.WINZO_SB) return;
+  arr.forEach(function(u) {
+    window.WINZO_SB.from("users").upsert({
+      uid:u.uid, full_name:u.fullName||u.name, phone:u.phone, email:u.email,
+      kyc_type:u.kycType, kyc_url:u.kycUrl, kyc_verified:u.kycVerified||false,
+      chips:u.chips||0
+    }).then(function(){});
+  });
 }
+
+// ── Auto-sync on panel load ───────────────────────────────────
+window.syncAndReload = async function(panelKey, panelLabel) {
+  const loaders = {
+    "view-all-users":        getLiveUsersAsync,
+    "review-kyc":            getLiveUsersAsync,
+    "fraud-users":           getLiveUsersAsync,
+    "wallet-mismatch":       getLiveUsersAsync,
+    "add-user":              getLiveUsersAsync,
+    "challenges-24h":        getLiveSetsAsync,
+    "running-challenges":    getLiveSetsAsync,
+    "search-challenges":     getLiveSetsAsync,
+    "all-challenges":        getLiveSetsAsync,
+    "challenges-setup":      getLiveSetsAsync,
+    "new-deposit-requests":  getLiveDepositsAsync,
+    "deposits-2h":           getLiveDepositsAsync,
+    "all-deposits":          getLiveDepositsAsync,
+    "deposit-report":        getLiveDepositsAsync,
+    "recent-withdrawals":    getLiveWithdrawalsAsync,
+    "all-withdrawals":       getLiveWithdrawalsAsync,
+    "search-screenshots":    getLiveReportsAsync,
+    "blacklisted":           getLiveBlacklistAsync,
+    "view-all-games":        getLiveGamesAsync,
+    "overview":              async function() { await Promise.all([getLiveUsersAsync(), getLiveSetsAsync(), getLiveDepositsAsync(), getLiveWithdrawalsAsync(), getLiveReportsAsync()]); }
+  };
+  if (loaders[panelKey]) await loaders[panelKey]();
+  window.loadPanel(panelKey, panelLabel);
+};
 
 // ── Static seeds (games & tournaments — no live source yet) ──
 const STATIC = {

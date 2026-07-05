@@ -184,3 +184,16 @@ PANELS["manual-withdraw-admin"] = function() {
   <button class="btn btn-primary" onclick="adminManualWithdraw()"><i class="ph-fill ph-hand-coins"></i> Process Withdrawal</button>
 </div></div>`;
 };
+
+// ── Settings ──────────────────────────────────────────────────
+PANELS["settings"] = function() {
+  const s = window.WinzoSettings ? window.WinzoSettings.get() : {};
+  return `<div class="a2-panel-head"><h2><i class="ph ph-sliders"></i> Settings</h2></div>
+<div class="a2-form-card"><div class="form">
+  <div class="field"><label>Bonus Contact Phone</label><input id="set-bonus-phone" type="text" value="${s.bonusPhone||'+91 99999 99999'}" placeholder="+91 XXXXX XXXXX" /></div>
+  <div class="field"><label>Admin Passcode</label><input id="set-admin-pass" type="text" value="${s.adminPass||'winzo-admin-2026'}" placeholder="New passcode" /></div>
+  <div class="field"><label>UPI ID</label><input id="set-upi-id" type="text" value="${s.upiId||'winzoindia@upi'}" placeholder="yourname@upi" /></div>
+  <div class="field"><label>UPI Display Name</label><input id="set-upi-name" type="text" value="${s.upiName||'WinzoIndia'}" placeholder="Display name" /></div>
+  <button class="btn btn-primary" onclick="adminSaveSettings()"><i class="ph-fill ph-floppy-disk"></i> Save Settings</button>
+</div></div>`;
+};

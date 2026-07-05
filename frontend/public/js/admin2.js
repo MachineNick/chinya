@@ -44,13 +44,15 @@ window.approveDepositRequest = function(id) {
   var d = deps.find(function(x){ return x.id === id; });
   if (!d) return;
   d.status = "success";
-  // Credit chips to matching user
   var users = getLiveUsers();
   var u = users.find(function(x){ return x.fullName === d.user || x.phone === d.userPhone || x.email === d.userEmail; });
   if (u) { u.chips = (Number(u.chips) || 0) + Number(d.amount); u.wallet = u.chips; saveLiveUsers(users); }
   localStorage.setItem("winzo_deposits", JSON.stringify(deps));
+  if (window.WINZO_SB) {
+    window.WINZO_SB.from("deposits").update({ status:"success" }).eq("id", id).then(function(){});
+  }
   showToast("Approved & " + d.amount + " chips credited to " + d.user, "success");
-  window.loadPanel("new-deposit-requests", "New Deposit Requests");
+  window.syncAndReload("new-deposit-requests", "New Deposit Requests");
 };
 
 window.rejectDepositRequest = function(id) {
@@ -59,8 +61,11 @@ window.rejectDepositRequest = function(id) {
   if (!d) return;
   d.status = "rejected";
   localStorage.setItem("winzo_deposits", JSON.stringify(deps));
+  if (window.WINZO_SB) {
+    window.WINZO_SB.from("deposits").update({ status:"rejected" }).eq("id", id).then(function(){});
+  }
   showToast("Request rejected.", "error");
-  window.loadPanel("new-deposit-requests", "New Deposit Requests");
+  window.syncAndReload("new-deposit-requests", "New Deposit Requests");
 };
 
 window.adminDeleteUser = function (uid) {
@@ -155,15 +160,25 @@ window.adminApproveKyc = function (uid) {
   if (u) {
     u.kycVerified = true;
     saveLiveUsers(users);
-    // Update session if this is the currently logged-in user
     var session = JSON.parse(localStorage.getItem("winzo_session") || "null");
     if (session && session.uid === uid) {
       session.kycVerified = true;
       localStorage.setItem("winzo_session", JSON.stringify(session));
     }
+    if (window.WINZO_SB) window.WINZO_SB.from("users").update({ kyc_verified: true }).eq("uid", uid).then(function(){});
   }
   showToast("KYC approved", "success");
   window.loadPanel("review-kyc", "Review KYC Users");
+};
+
+window.adminSaveSettings = function () {
+  var bonusPhone = document.getElementById("set-bonus-phone").value.trim();
+  var adminPass  = document.getElementById("set-admin-pass").value.trim();
+  var upiId      = document.getElementById("set-upi-id").value.trim();
+  var upiName    = document.getElementById("set-upi-name").value.trim();
+  if (!bonusPhone || !adminPass) return showToast("Bonus phone and passcode are required.", "error");
+  if (window.WinzoSettings) window.WinzoSettings.save({ bonusPhone, adminPass, upiId, upiName });
+  showToast("Settings saved!", "success");
 };
 
 window.adminManualDeposit = function () {
@@ -274,10 +289,17 @@ window.showAddBlacklist = function () {
   function unlock() {
     gateWrap.style.display = "none";
     dashWrap.style.display = "flex";
-    window.loadPanel("overview", "Dashboard Overview");
+    window.syncAndReload("overview", "Dashboard Overview");
   }
 
   if (sessionStorage.getItem(GATE_KEY) === "1") unlock();
+
+  // Load settings from Supabase before passcode check
+  if (window.WinzoSettings && window.WinzoSettings.load) {
+    window.WinzoSettings.load().then(function() {
+      if (sessionStorage.getItem(GATE_KEY) === "1") unlock();
+    });
+  }
 
   document.getElementById("gate-form").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -308,7 +330,7 @@ window.showAddBlacklist = function () {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".a2-nav-child").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
-      window.loadPanel(btn.dataset.panel, btn.textContent.trim());
+      window.syncAndReload(btn.dataset.panel, btn.textContent.trim());
       if (window.innerWidth <= 900) document.getElementById("sidebar").classList.remove("open");
     });
   });

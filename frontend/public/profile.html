@@ -85,26 +85,33 @@
     if (!session) { window.location.href = "login.html"; }
     if (session) {
       const kycLabels = { aadhaar: "Aadhaar Card", pan: "PAN Card", dl: "Driving Licence", passport: "Passport" };
-      document.querySelector("[data-testid='profile-name']").textContent = session.fullName;
-      document.querySelector("[data-testid='profile-email']").textContent = session.email;
-      document.querySelector("[data-testid='info-fullname']").textContent = session.fullName;
-      document.querySelector("[data-testid='info-phone']").textContent = session.phone;
-      document.querySelector("[data-testid='info-email']").textContent = session.email;
-      document.querySelector("[data-testid='info-kyc-type']").textContent = kycLabels[session.kycType] || "—";
 
-      document.querySelector("[data-testid='info-since']").textContent = new Date(session.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
-      const badge = document.getElementById("kyc-badge");
-      if (!session.kycVerified) {
-        badge.classList.add("pending");
-        badge.innerHTML = '<i class="ph-fill ph-clock"></i> KYC Pending';
+      function renderProfile(u) {
+        document.querySelector("[data-testid='profile-name']").textContent = u.fullName;
+        document.querySelector("[data-testid='profile-email']").textContent = u.email;
+        document.querySelector("[data-testid='info-fullname']").textContent = u.fullName;
+        document.querySelector("[data-testid='info-phone']").textContent = u.phone;
+        document.querySelector("[data-testid='info-email']").textContent = u.email;
+        document.querySelector("[data-testid='info-kyc-type']").textContent = kycLabels[u.kycType] || "—";
+        document.querySelector("[data-testid='info-since']").textContent = new Date(u.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
+        const badge = document.getElementById("kyc-badge");
+        badge.className = "kyc-badge";
+        if (u.kycVerified) {
+          badge.innerHTML = '<i class="ph-fill ph-check-circle"></i> KYC Verified';
+        } else {
+          badge.classList.add("pending");
+          badge.innerHTML = '<i class="ph-fill ph-clock"></i> KYC Pending';
+        }
+        const kycView = document.getElementById("kyc-view");
+        if (u.kycUrl) kycView.href = u.kycUrl;
+        else kycView.addEventListener("click", (e) => { e.preventDefault(); window.WinzoAuth.toast("No KYC document on file.", "error"); });
       }
-      const kycView = document.getElementById("kyc-view");
-      if (session.kycUrl) kycView.href = session.kycUrl;
-      else {
-        kycView.classList.add("btn-secondary");
-        kycView.addEventListener("click", (e) => {
-          e.preventDefault();
-          window.WinzoAuth.toast("No KYC document on file.", "error");
+
+      // Render from cache first, then fetch fresh from Supabase
+      renderProfile(session);
+      if (window.WINZO_SB) {
+        window.WINZO_SB.from("users").select("*").eq("uid", session.uid).single().then(({ data }) => {
+          if (data) renderProfile({ fullName:data.full_name, email:data.email, phone:data.phone, kycType:data.kyc_type, kycUrl:data.kyc_url, kycVerified:data.kyc_verified, createdAt:data.created_at });
         });
       }
     }
