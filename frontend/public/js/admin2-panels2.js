@@ -105,14 +105,19 @@ ${deps.length ? deps.map(function(d,i){return `<tr><td>${i+1}</td><td style="fon
 };
 
 PANELS["recent-withdrawals"] = function() {
-  const wds = getLiveWithdrawals().filter(function(w){return w.status==="pending";});
-  return `<div class="a2-panel-head"><h2><i class="ph ph-arrow-up-right"></i> Recent Withdrawal Requests</h2><span class="badge badge-yellow">${wds.length} Pending</span></div>
+  const all = getLiveWithdrawals();
+  const pending = all.filter(function(w){return w.status==="pending";});
+  return `<div class="a2-panel-head"><h2><i class="ph ph-arrow-up-right"></i> Recent Withdrawal Requests</h2><span class="badge badge-yellow">${pending.length} Pending</span></div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Txn ID</th><th>User</th><th>Phone</th><th>Amount</th><th>Method</th><th>UPI ID</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-${wds.length ? wds.map(function(w,i){return `<tr><td>${i+1}</td><td style="font-family:var(--font-head);font-size:11px;color:var(--text-muted)">${(w.id||"—").toUpperCase()}</td><td>${w.user||"—"}</td><td>${w.userPhone||"—"}</td><td style="color:var(--danger);font-weight:700">${rupee(w.amount)}</td><td>${w.method||"UPI"}</td><td style="font-size:12px;">${w.upiId||"—"}</td><td>${statusBadge(w.status||"pending")}</td>
-<td style="display:flex;gap:6px;">
-  <button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="approveWithdrawRequest('${w.id}')"><i class="ph ph-check"></i> Approve</button>
-  <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;color:var(--danger);border-color:var(--danger);" onclick="rejectWithdrawRequest('${w.id}')"><i class="ph ph-x"></i> Reject</button>
-</td></tr>`;}).join("") : emptyRow(9,"No pending withdrawal requests.")}
+${all.length ? all.slice().reverse().map(function(w,i){
+  const actions = w.status === "pending"
+    ? `<td style="display:flex;gap:6px;">
+        <button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="approveWithdrawRequest('${w.id}')"><i class="ph ph-check"></i> Approve</button>
+        <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;color:var(--danger);border-color:var(--danger);" onclick="rejectWithdrawRequest('${w.id}')"><i class="ph ph-x"></i> Reject</button>
+       </td>`
+    : `<td>${statusBadge(w.status)}</td>`;
+  return `<tr><td>${i+1}</td><td style="font-family:var(--font-head);font-size:11px;color:var(--text-muted)">${(w.id||"—").toUpperCase()}</td><td>${w.user||"—"}</td><td>${w.userPhone||"—"}</td><td style="color:var(--danger);font-weight:700">${rupee(w.amount)}</td><td>${w.method||"UPI"}</td><td style="font-size:12px;">${w.upiId||"—"}</td><td>${statusBadge(w.status||"pending")}</td>${actions}</tr>`;
+}).join("") : emptyRow(9,"No withdrawal requests yet.")}
 </tbody></table></div>`;
 };
 
@@ -134,9 +139,19 @@ PANELS["all-withdrawals"] = function() {
 <div class="a2-search">
   <input type="text" placeholder="Search user..." oninput="filterTable(this,'all-wd-tbody',2)" />
 </div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Txn ID</th><th>User</th><th>Amount</th><th>Method</th><th>Status</th><th>Time</th></tr></thead>
+<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Txn ID</th><th>User</th><th>Phone</th><th>Amount</th><th>Method</th><th>UPI ID</th><th>Status</th><th>Time</th></tr></thead>
 <tbody id="all-wd-tbody">
-${wds.length ? wds.slice().reverse().map(function(w,i){return `<tr><td>${i+1}</td><td style="font-family:var(--font-head);font-size:11px;color:var(--text-muted)">${(w.id||"—").toUpperCase()}</td><td>${w.user||w.userName||"—"}</td><td style="color:var(--danger);font-weight:700">${rupee(w.amount)}</td><td>${w.method||"UPI"}</td><td>${statusBadge(w.status||"pending")}</td><td>${w.time||w.createdAt||"—"}</td></tr>`;}).join("") : emptyRow(7,"No withdrawal requests yet.")}
+${wds.length ? wds.slice().reverse().map(function(w,i){return `<tr>
+  <td>${i+1}</td>
+  <td style="font-family:var(--font-head);font-size:11px;color:var(--text-muted)">${(w.id||"—").toUpperCase()}</td>
+  <td>${w.user||w.userName||"—"}</td>
+  <td>${w.userPhone||"—"}</td>
+  <td style="color:var(--danger);font-weight:700">${rupee(w.amount)}</td>
+  <td>${w.method||"UPI"}</td>
+  <td style="font-size:12px;">${w.upiId||"—"}</td>
+  <td>${statusBadge(w.status||"pending")}</td>
+  <td style="font-size:11px;color:var(--text-muted);">${w.time||w.createdAt||"—"}</td>
+</tr>`;}).join("") : emptyRow(9,"No withdrawal requests yet.")}
 </tbody></table></div>`;
 };
 

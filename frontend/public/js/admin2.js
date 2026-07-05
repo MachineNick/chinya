@@ -69,6 +69,8 @@ window.rejectWithdrawRequest = function(id) {
   showToast("Withdrawal rejected.", "error");
   window.syncAndReload("recent-withdrawals", "Recent Withdrawal Requests");
 };
+
+window.approveDepositRequest = function(id) {
   var deps = getLiveDeposits();
   var d = deps.find(function(x){ return x.id === id; });
   if (!d) return;
