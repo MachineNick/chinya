@@ -82,25 +82,18 @@ async function wzSignup(payload) {
   const kycResult = payload.kycFile
     ? await wzUploadKycFile(payload.kycFile, uid)
     : { kycUrl: null, kycKey: null };
-  const kycUrl = kycResult.kycUrl;
-  const kycKey = kycResult.kycKey;
 
-  // Optional Firebase Auth if configured
-  if (window.WINZO_FIREBASE_READY && window.WINZO_AUTH) {
+  // ── Supabase Auth ──
+  if (window.WINZO_SB) {
     try {
-      await window.WINZO_AUTH.createUserWithEmailAndPassword(payload.email, payload.password);
-      if (window.WINZO_STORE) {
-        await window.WINZO_STORE.collection("users").doc(uid).set({
-          fullName: payload.fullName,
-          phone: payload.phone,
-          email: payload.email,
-          kycType: payload.kycType,
-          kycUrl,
-          createdAt: new Date().toISOString()
-        });
-      }
+      const { data, error } = await window.WINZO_SB.auth.signUp({
+        email: payload.email,
+        password: payload.password,
+        options: { data: { fullName: payload.fullName, phone: payload.phone } }
+      });
+      if (error) throw new Error(error.message);
     } catch (e) {
-      console.warn("Firebase auth failed, using local fallback:", e.message);
+      throw new Error(e.message);
     }
   }
 
@@ -109,14 +102,28 @@ async function wzSignup(payload) {
     fullName: payload.fullName,
     phone: payload.phone,
     email: payload.email,
-    password: payload.password, // demo only – hash in production
+    password: payload.password,
     kycType: payload.kycType,
-    kycUrl,
-    kycKey,
-    kycVerified: false, // admin must verify manually
-    wallet: 500, // welcome bonus
+    kycUrl: kycResult.kycUrl,
+    kycKey: kycResult.kycKey,
+    kycVerified: false,
+    chips: 0,
+    wallet: 0,
     createdAt: new Date().toISOString()
   };
+
+  // ── Supabase DB ──
+  if (window.WINZO_SB) {
+    try {
+      await window.WINZO_SB.from("users").insert({
+        uid, full_name: payload.fullName, phone: payload.phone,
+        email: payload.email, kyc_type: payload.kycType,
+        kyc_url: kycResult.kycUrl, kyc_verified: false,
+        chips: 0, created_at: new Date().toISOString()
+      });
+    } catch(e) { console.warn("Supabase DB insert failed:", e.message); }
+  }
+
   users.push(user);
   wzSaveUsers(users);
   wzSetSession({ ...user, password: undefined });
@@ -124,17 +131,43 @@ async function wzSignup(payload) {
 }
 
 async function wzLogin(identifier, password) {
+  // ── Supabase Auth ──
+  if (window.WINZO_SB) {
+    try {
+      const { data, error } = await window.WINZO_SB.auth.signInWithPassword({
+        email: identifier.includes("@") ? identifier : undefined,
+        phone: !identifier.includes("@") ? identifier : undefined,
+        password
+      });
+      if (error) throw new Error(error.message);
+      // Sync fresh user data from Supabase DB
+      const { data: dbUser } = await window.WINZO_SB.from("users").select("*").eq("email", identifier).single();
+      if (dbUser) {
+        const users = wzGetUsers();
+        const idx = users.findIndex(u => u.email === identifier);
+        const merged = {
+          uid: dbUser.uid, fullName: dbUser.full_name, phone: dbUser.phone,
+          email: dbUser.email, kycType: dbUser.kyc_type, kycUrl: dbUser.kyc_url,
+          kycVerified: dbUser.kyc_verified, chips: dbUser.chips || 0,
+          wallet: dbUser.chips || 0, createdAt: dbUser.created_at, password
+        };
+        if (idx >= 0) users[idx] = merged; else users.push(merged);
+        wzSaveUsers(users);
+        wzSetSession({ ...merged, password: undefined });
+        return merged;
+      }
+    } catch (e) {
+      // Fall through to localStorage
+      console.warn("Supabase login failed, trying local:", e.message);
+    }
+  }
+
+  // ── localStorage fallback ──
   const users = wzGetUsers();
   const user = users.find(
     u => (u.email === identifier || u.phone === identifier) && u.password === password
   );
   if (!user) throw new Error("Invalid credentials. Please try again.");
-
-  if (window.WINZO_FIREBASE_READY && window.WINZO_AUTH) {
-    try { await window.WINZO_AUTH.signInWithEmailAndPassword(user.email, password); }
-    catch (e) { console.warn("Firebase login skipped:", e.message); }
-  }
-  // Always use fresh user data from storage (picks up admin KYC approval)
   wzSetSession({ ...user, password: undefined });
   return user;
 }
