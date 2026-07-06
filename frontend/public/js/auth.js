@@ -74,11 +74,19 @@ async function wzUploadKycFile(file, uid) {
 
 async function wzSignup(payload) {
   // payload: { fullName, phone, email, password, kycType, kycFile }
-  const users = wzGetUsers();
-  if (users.find(u => u.email === payload.email || u.phone === payload.phone)) {
-    throw new Error("An account with this email or phone already exists.");
+
+  // ── Duplicate check (Supabase-first, localStorage fallback) ──
+  if (window.WINZO_SB) {
+    const { data: existing } = await window.WINZO_SB.from("users")
+      .select("uid").or(`email.eq.${payload.email},phone.eq.${payload.phone}`).limit(1);
+    if (existing && existing.length) throw new Error("An account with this email or phone already exists.");
+  } else {
+    const users = wzGetUsers();
+    if (users.find(u => u.email === payload.email || u.phone === payload.phone))
+      throw new Error("An account with this email or phone already exists.");
   }
-  const uid = "u_" + Date.now();
+
+  let uid = "u_" + Date.now();
   const kycResult = payload.kycFile
     ? await wzUploadKycFile(payload.kycFile, uid)
     : { kycUrl: null, kycKey: null };
@@ -92,6 +100,8 @@ async function wzSignup(payload) {
         options: { data: { fullName: payload.fullName, phone: payload.phone } }
       });
       if (error) throw new Error(error.message);
+      // Use Supabase's UUID as uid so RLS auth.uid() = uid check passes
+      if (data?.user?.id) uid = data.user.id;
     } catch (e) {
       throw new Error(e.message);
     }
@@ -102,6 +112,7 @@ async function wzSignup(payload) {
     fullName: payload.fullName,
     phone: payload.phone,
     email: payload.email,
+    password: payload.password,   // kept only for localStorage fallback login (no Supabase)
     kycType: payload.kycType,
     kycUrl: kycResult.kycUrl,
     kycKey: kycResult.kycKey,
@@ -123,6 +134,7 @@ async function wzSignup(payload) {
     } catch(e) { console.warn("Supabase DB insert failed:", e.message); }
   }
 
+  const users = wzGetUsers();
   users.push(user);
   wzSaveUsers(users);
   wzSetSession({ ...user, password: undefined });
