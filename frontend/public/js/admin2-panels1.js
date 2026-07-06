@@ -201,27 +201,55 @@ PANELS["add-user"] = function() {
 };
 
 PANELS["review-kyc"] = function() {
-  const users = getLiveUsers().filter(function(u){return !u.kycVerified;});
-  return `<div class="a2-panel-head"><h2><i class="ph ph-identification-card"></i> Review KYC Users</h2><span class="badge badge-yellow">${users.length} Pending</span></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>KYC Type</th><th>Uploaded Doc</th><th>Actions</th></tr></thead><tbody>
-${users.length ? users.map(function(u,i){
-  var viewBtn = u.kycKey
-    ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminViewKyc('${u.kycKey}')"><i class="ph ph-eye"></i> View Doc</button>`
-    : u.kycUrl
-      ? `<a href="${u.kycUrl}" target="_blank" class="btn btn-primary" style="padding:5px 12px;font-size:12px;"><i class="ph ph-eye"></i> View Doc</a>`
-      : `<span style="color:var(--danger);font-size:12px;">Not uploaded</span>`;
-  return `<tr>
-    <td>${i+1}</td>
-    <td><strong>${u.fullName||u.name||"—"}</strong><br><span style="color:var(--text-muted);font-size:11px;">${u.email||""}</span></td>
-    <td>${u.phone||"—"}</td>
-    <td><span class="badge badge-yellow">${u.kycType||"—"}</span></td>
-    <td>${viewBtn}</td>
-    <td style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="adminApproveKyc('${u.uid}')"><i class="ph ph-check-circle"></i> Approve</button>
-      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="adminRejectKyc('${u.uid}')"><i class="ph ph-x-circle"></i> Reject</button>
-    </td>
-  </tr>`;}).join("") : emptyRow(6,"No pending KYC submissions.")}
-</tbody></table></div>`;
+  const all = getLiveUsers();
+  const pending  = all.filter(function(u){ return !u.kycVerified && !u.kycRejected; });
+  const approved = all.filter(function(u){ return u.kycVerified; });
+  const rejected = all.filter(function(u){ return !u.kycVerified && u.kycRejected; });
+
+  function kycRow(u, i) {
+    var viewBtn = u.kycKey
+      ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminViewKyc('${u.kycKey}')"><i class="ph ph-eye"></i> View Doc</button>`
+      : u.kycUrl
+        ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminShowDocModal('${u.kycUrl}')"><i class="ph ph-eye"></i> View Doc</button>`
+        : `<span style="color:var(--text-muted);font-size:12px;">Not uploaded</span>`;
+    var statusBadgeHtml = u.kycVerified
+      ? `<span class="badge badge-green">Approved</span>`
+      : u.kycRejected
+        ? `<span class="badge badge-red">Rejected</span>`
+        : `<span class="badge badge-yellow">Pending</span>`;
+    var actions = u.kycVerified
+      ? `<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="adminToggleKyc('${u.uid}',false)"><i class="ph ph-x-circle"></i> Revoke</button>`
+      : `<button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="adminApproveKyc('${u.uid}')"><i class="ph ph-check-circle"></i> Approve</button>
+         <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="adminRejectKyc('${u.uid}')"><i class="ph ph-x-circle"></i> Reject</button>`;
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${u.fullName||u.name||"—"}</strong><br><span style="color:var(--text-muted);font-size:11px;">${u.email||""}</span></td>
+      <td>${u.phone||"—"}</td>
+      <td><span class="badge badge-yellow">${u.kycType||"—"}</span></td>
+      <td id="kyc-badge-${u.uid}">${statusBadgeHtml}</td>
+      <td>${viewBtn}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">${actions}</td>
+    </tr>`;
+  }
+
+  var rows = [
+    ...pending.map(kycRow),
+    ...rejected.map(kycRow),
+    ...approved.map(kycRow)
+  ];
+
+  return `<div class="a2-panel-head">
+    <h2><i class="ph ph-identification-card"></i> Review KYC Users</h2>
+    <div style="display:flex;gap:8px;">
+      <span class="badge badge-yellow">${pending.length} Pending</span>
+      <span class="badge badge-red">${rejected.length} Rejected</span>
+      <span class="badge badge-green">${approved.length} Approved</span>
+    </div>
+  </div>
+  <div class="a2-table-wrap"><table class="a2-table">
+    <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>KYC Type</th><th>Status</th><th>Doc</th><th>Actions</th></tr></thead>
+    <tbody>${rows.length ? rows.join("") : emptyRow(7,"No users registered yet.")}</tbody>
+  </table></div>`;
 };
 
 PANELS["fraud-users"] = function() {

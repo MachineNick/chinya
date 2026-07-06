@@ -32,11 +32,34 @@ window.filterTable = function (input, tbodyId) {
 };
 
 window.adminViewKyc = async function (key) {
+  var url;
   try {
     var res = await fetch("http://localhost:8001/api/kyc/url?key=" + encodeURIComponent(key));
     var data = await res.json();
-    window.open(data.url, "_blank");
-  } catch (e) { showToast("Could not load document. Backend may be offline.", "error"); }
+    url = data.url;
+  } catch (e) { showToast("Could not load document. Backend may be offline.", "error"); return; }
+  window.adminShowDocModal(url);
+};
+
+window.adminShowDocModal = function(url) {
+  var existing = document.getElementById("kyc-doc-modal");
+  if (existing) existing.remove();
+  var isImg = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url) || url.startsWith("data:image");
+  var content = isImg
+    ? `<img src="${url}" style="max-width:100%;max-height:75vh;border-radius:8px;display:block;margin:0 auto;" />`
+    : `<iframe src="${url}" style="width:100%;height:75vh;border:none;border-radius:8px;"></iframe>`;
+  var modal = document.createElement("div");
+  modal.id = "kyc-doc-modal";
+  modal.style.cssText = "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);";
+  modal.innerHTML = `<div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;padding:20px;max-width:860px;width:100%;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <span style="font-family:var(--font-head);font-size:13px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">KYC Document</span>
+      <button onclick="document.getElementById('kyc-doc-modal').remove()" style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text-secondary);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;">✕</button>
+    </div>
+    ${content}
+  </div>`;
+  modal.addEventListener("click", function(e){ if(e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
 };
 
 window.approveWithdrawRequest = function(id) {
@@ -311,6 +334,112 @@ window.showAddBlacklist = function () {
   showToast("\"" + name.trim() + "\" blacklisted", "success");
 };
 
+// ── Notification System ──────────────────────────────────────
+(function () {
+  var _seenIds = JSON.parse(sessionStorage.getItem("winzo_notif_seen") || "[]");
+  var _notifs = [];
+
+  function markSeen(id) {
+    if (!_seenIds.includes(id)) {
+      _seenIds.push(id);
+      sessionStorage.setItem("winzo_notif_seen", JSON.stringify(_seenIds));
+    }
+  }
+
+  async function pollNotifications() {
+    var deps = [], wds = [];
+    try { deps = await getLiveDepositsAsync(); } catch(e) {}
+    try { wds = await getLiveWithdrawalsAsync(); } catch(e) {}
+
+    var newNotifs = [];
+    deps.filter(function(d){ return d.status === "pending"; }).forEach(function(d) {
+      newNotifs.push({ id: "dep_" + d.id, type: "deposit", msg: "New deposit request: ₹" + Number(d.amount).toLocaleString("en-IN") + " from " + (d.user || "User"), panel: "new-deposit-requests", label: "New Deposit Requests", time: d.time });
+    });
+    wds.filter(function(w){ return w.status === "pending"; }).forEach(function(w) {
+      newNotifs.push({ id: "wd_" + w.id, type: "withdraw", msg: "New withdrawal request: ₹" + Number(w.amount).toLocaleString("en-IN") + " from " + (w.user || "User"), panel: "recent-withdrawals", label: "Recent Withdrawal Requests", time: w.time });
+    });
+
+    _notifs = newNotifs;
+    var unseen = newNotifs.filter(function(n){ return !_seenIds.includes(n.id); });
+    updateNotifUI(unseen, newNotifs.length);
+  }
+
+  function updateNotifUI(unseen, totalPending) {
+    var badge = document.getElementById("notif-badge");
+    var dot = document.getElementById("txn-nav-dot");
+    var list = document.getElementById("notif-list");
+    if (!badge || !dot || !list) return;
+
+    // Bell badge
+    if (unseen.length > 0) {
+      badge.textContent = unseen.length;
+      badge.style.display = "flex";
+    } else {
+      badge.style.display = "none";
+    }
+
+    // Green dot on Transaction Management
+    dot.style.display = totalPending > 0 ? "inline-block" : "none";
+
+    // Notification list
+    if (_notifs.length === 0) {
+      list.innerHTML = '<div class="a2-notif-empty">No pending requests</div>';
+    } else {
+      list.innerHTML = _notifs.map(function(n) {
+        var isSeen = _seenIds.includes(n.id);
+        return '<div class="a2-notif-item' + (isSeen ? " seen" : "") + '" onclick="handleNotifClick(\'' + n.id + '\',\'' + n.panel + '\',\'' + n.label + '\')">'
+          + '<span class="a2-notif-icon ' + (n.type === "deposit" ? "dep" : "wd") + '">'
+          + (n.type === "deposit" ? '<i class="ph ph-arrow-down-left"></i>' : '<i class="ph ph-arrow-up-right"></i>')
+          + '</span>'
+          + '<div class="a2-notif-text"><div class="a2-notif-msg">' + n.msg + '</div>'
+          + '<div class="a2-notif-time">' + (n.time ? new Date(n.time).toLocaleString("en-IN") : "") + '</div></div>'
+          + '</div>';
+      }).join("");
+    }
+  }
+
+  window.handleNotifClick = function(id, panel, label) {
+    markSeen(id);
+    document.getElementById("notif-dropdown").style.display = "none";
+    var unseen = _notifs.filter(function(n){ return !_seenIds.includes(n.id); });
+    var badge = document.getElementById("notif-badge");
+    if (badge) { badge.textContent = unseen.length; badge.style.display = unseen.length > 0 ? "flex" : "none"; }
+    // Mark item as seen in UI
+    var items = document.querySelectorAll(".a2-notif-item");
+    items.forEach(function(el) { el.classList.add("seen"); });
+    window.syncAndReload(panel, label);
+  };
+
+  window.toggleNotifDropdown = function() {
+    var dd = document.getElementById("notif-dropdown");
+    if (!dd) return;
+    var isOpen = dd.style.display !== "none";
+    dd.style.display = isOpen ? "none" : "block";
+    if (!isOpen) {
+      // Mark all as seen when opening
+      _notifs.forEach(function(n){ markSeen(n.id); });
+      var badge = document.getElementById("notif-badge");
+      if (badge) badge.style.display = "none";
+      updateNotifUI([], _notifs.filter(function(n){ return n.type; }).length);
+    }
+  };
+
+  // Close dropdown on outside click
+  document.addEventListener("click", function(e) {
+    var wrap = document.getElementById("notif-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+      var dd = document.getElementById("notif-dropdown");
+      if (dd) dd.style.display = "none";
+    }
+  });
+
+  // Poll every 30 seconds after unlock
+  window._startNotifPolling = function() {
+    pollNotifications();
+    setInterval(pollNotifications, 30000);
+  };
+})();
+
 // ── Boot ─────────────────────────────────────────────────────
 (function () {
   var GATE_KEY = "winzo_admin2_unlocked";
@@ -321,6 +450,7 @@ window.showAddBlacklist = function () {
     gateWrap.style.display = "none";
     dashWrap.style.display = "flex";
     window.syncAndReload("overview", "Dashboard Overview");
+    if (window._startNotifPolling) window._startNotifPolling();
   }
 
   if (sessionStorage.getItem(GATE_KEY) === "1") unlock();

@@ -61,6 +61,23 @@
   font-size: 17px;
   border-bottom: 1px solid var(--border-subtle);
 }
+.a2-sidebar-close {
+  display: none;
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  font-size: 18px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.a2-sidebar-close:hover { background: rgba(255,59,48,0.15); color: var(--danger); }
+@media (max-width: 900px) {
+  .a2-sidebar-close { display: flex; }
+}
 .a2-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
 .a2-nav-group { margin-bottom: 2px; }
 .a2-nav-parent {
@@ -130,7 +147,116 @@
   letter-spacing: 1.5px;
   color: var(--text-primary);
 }
-.a2-topbar-right { margin-left: auto; }
+.a2-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+
+/* Notification bell */
+.a2-notif-wrap { position: relative; }
+.a2-notif-btn {
+  position: relative;
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 18px;
+  transition: background 0.2s, color 0.2s;
+}
+.a2-notif-btn:hover { background: var(--bg-hover, rgba(255,255,255,0.06)); color: var(--text-primary); }
+.a2-notif-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  font-family: var(--font-body);
+  animation: notif-pop 0.3s ease;
+}
+@keyframes notif-pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+.a2-notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 9999;
+  overflow: hidden;
+}
+.a2-notif-header {
+  padding: 12px 16px;
+  font-family: var(--font-head);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+.a2-notif-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.a2-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s;
+}
+.a2-notif-item:last-child { border-bottom: none; }
+.a2-notif-item:hover { background: var(--bg-hover, rgba(255,255,255,0.04)); }
+.a2-notif-item.seen { opacity: 0.55; }
+.a2-notif-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.a2-notif-icon.dep { background: rgba(34,197,94,0.15); color: #22c55e; }
+.a2-notif-icon.wd  { background: rgba(251,146,60,0.15); color: #fb923c; }
+.a2-notif-msg { font-size: 13px; color: var(--text-primary); line-height: 1.4; }
+.a2-notif-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* Green dot on Transaction Management nav */
+.a2-txn-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  margin-left: auto;
+  margin-right: 4px;
+  flex-shrink: 0;
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
+}
 .a2-badge-admin {
   display: inline-flex;
   align-items: center;
@@ -297,4 +423,14 @@
   .a2-sidebar.open { transform: translateX(0); box-shadow: 4px 0 30px rgba(0,0,0,0.5); }
   .a2-menu-toggle { display: block; }
   .a2-content { padding: 20px 16px; }
+}
+
+@media (max-width: 600px) {
+  .a2-topbar-title { font-size: 13px; }
+  .a2-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .a2-table { min-width: 560px; }
+  .a2-panel-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .a2-kpi-grid { grid-template-columns: 1fr 1fr; }
+  .a2-form-grid { grid-template-columns: 1fr; }
+  .a2-notif-dropdown { width: calc(100vw - 24px); right: -60px; }
 }

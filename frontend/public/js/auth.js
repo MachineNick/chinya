@@ -259,7 +259,13 @@ function wzSaveSets(arr) {
   localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr));
   wzSaveSetsAsync(arr);
 }
-window.WinzoSets = { get: wzGetSets, getAsync: wzGetSetsAsync, save: wzSaveSets };
+async function wzDeleteSet(id) {
+  const arr = (await wzGetSetsAsync()).filter(s => s.id !== id);
+  localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr));
+  if (!window.WINZO_SB) return;
+  try { await window.WINZO_SB.from("challenges").delete().eq("id", id); } catch(e) { console.warn("Supabase set delete failed:", e.message); }
+}
+window.WinzoSets = { get: wzGetSets, getAsync: wzGetSetsAsync, save: wzSaveSets, delete: wzDeleteSet };
 
 // ---- Deposits (Supabase + localStorage) ----
 async function wzSaveDepositAsync(dep) {

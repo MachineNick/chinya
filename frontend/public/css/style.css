@@ -1194,3 +1194,103 @@ body { padding-bottom: 72px; }
   background:rgba(255,215,0,0.08);
   color:var(--accent);
 }
+
+/* ==========================================================
+   Mobile Responsive — ≤ 768px
+   ========================================================== */
+@media (max-width: 768px) {
+
+  /* Nav */
+  .nav { height: 60px; }
+  .nav-links { display: none; }
+  .nav-actions .btn span { display: none; }
+  .nav-actions .btn { padding: 10px 14px; font-size: 12px; }
+  .nav-inner { gap: 12px; }
+
+  /* Typography */
+  h1 { font-size: clamp(1.6rem, 7vw, 2.4rem); }
+  h2 { font-size: clamp(1.2rem, 5vw, 1.8rem); }
+
+  /* Container */
+  .container { padding: 0 16px; }
+
+  /* Hero */
+  .hero { padding: 48px 16px; min-height: auto; }
+  .hero-content p { font-size: 1rem; }
+  .hero-cta { flex-direction: column; align-items: center; }
+  .hero-cta .btn { width: 100%; max-width: 320px; }
+  .stats { gap: 12px; margin-top: 40px; }
+  .stat-value { font-size: 1.6rem; }
+
+  /* Features */
+  .features-grid { grid-template-columns: 1fr; gap: 16px; }
+
+  /* User hero */
+  .user-hero { padding: 28px 16px; }
+  .user-hero h1 { font-size: 1.4rem; }
+  .user-avatar-lg { width: 72px; height: 72px; font-size: 32px; }
+  .bonus-line { font-size: 13px; }
+
+  /* Wallet chips */
+  .wallet-chips-card { padding: 20px 18px; }
+  .wallet-chips-value { font-size: 2.4rem; }
+
+  /* Disclaimer */
+  .disclaimer { flex-direction: column; gap: 12px; padding: 16px; }
+  .disclaimer-icon { font-size: 24px; }
+
+  /* Set-a-game */
+  .setbar { padding: 18px 16px; }
+  .setbar-row { grid-template-columns: 1fr; gap: 10px; }
+  .setbar-btn { width: 100%; }
+
+  /* Set rows */
+  .set-row { grid-template-columns: 1fr; gap: 10px; padding: 14px; }
+
+  /* Modal */
+  .modal { padding: 12px; align-items: flex-end; }
+  .modal-panel {
+    max-width: 100%;
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px;
+  }
+
+  /* Toast */
+  .toast { top: auto; bottom: 80px; right: 12px; left: 12px; max-width: 100%; }
+
+  /* Profile */
+  .profile-shell { padding: 24px 16px; }
+  .profile-header { flex-direction: column; align-items: flex-start; gap: 16px; padding: 20px; }
+  .avatar { width: 72px; height: 72px; }
+  .info-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Buttons */
+  .btn { padding: 12px 20px; font-size: 13px; }
+  .btn-lg { padding: 14px 24px; font-size: 14px; }
+
+  /* Game grid */
+  .game-grid { grid-template-columns: 1fr; }
+  .lobby-grid { grid-template-columns: 1fr; }
+
+  /* Sections */
+  .section { padding: 48px 16px; }
+  .section-title { flex-direction: column; gap: 4px; }
+
+  /* Promo */
+  .promo { flex-direction: column; padding: 20px; }
+
+  /* Admin table scroll */
+  .admin-table-wrap, .a2-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Pay method */
+  .pay-method-opt span { padding: 8px 12px; font-size: 12px; }
+}
+
+/* Extra small — ≤ 400px */
+@media (max-width: 400px) {
+  .wallet-chips-value { font-size: 2rem; }
+  .info-grid { grid-template-columns: 1fr; }
+  .nav-actions { gap: 6px; }
+}
