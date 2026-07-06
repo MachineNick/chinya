@@ -59,7 +59,7 @@ async function wzUploadKycFile(file, uid) {
     const form = new FormData();
     form.append("uid", uid);
     form.append("file", file);
-    const res = await fetch("http://localhost:8001/api/kyc/upload", { method: "POST", body: form });
+    const res = await fetch((window.WINZO_ENV?.BACKEND_URL || "http://localhost:8001") + "/api/kyc/upload", { method: "POST", body: form });
     if (res.ok) return await res.json(); // { kycUrl, kycKey }
   } catch (e) { /* fall through */ }
   // Fallback: base64

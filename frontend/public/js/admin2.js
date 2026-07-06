@@ -34,7 +34,7 @@ window.filterTable = function (input, tbodyId) {
 window.adminViewKyc = async function (key) {
   var url;
   try {
-    var res = await fetch("http://localhost:8001/api/kyc/url?key=" + encodeURIComponent(key));
+    var res = await fetch((window.WINZO_ENV?.BACKEND_URL || "http://localhost:8001") + "/api/kyc/url?key=" + encodeURIComponent(key));
     var data = await res.json();
     url = data.url;
   } catch (e) { showToast("Could not load document. Backend may be offline.", "error"); return; }

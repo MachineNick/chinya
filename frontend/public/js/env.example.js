@@ -5,5 +5,6 @@
 // ============================================================
 window.WINZO_ENV = {
   SUPABASE_URL:  "YOUR_SUPABASE_URL",
-  SUPABASE_ANON: "YOUR_SUPABASE_ANON_KEY"
+  SUPABASE_ANON: "YOUR_SUPABASE_ANON_KEY",
+  BACKEND_URL:   "http://localhost:8001"
 };
