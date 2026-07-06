@@ -102,7 +102,6 @@ async function wzSignup(payload) {
     fullName: payload.fullName,
     phone: payload.phone,
     email: payload.email,
-    password: payload.password,
     kycType: payload.kycType,
     kycUrl: kycResult.kycUrl,
     kycKey: kycResult.kycKey,
@@ -149,7 +148,7 @@ async function wzLogin(identifier, password) {
           uid: dbUser.uid, fullName: dbUser.full_name, phone: dbUser.phone,
           email: dbUser.email, kycType: dbUser.kyc_type, kycUrl: dbUser.kyc_url,
           kycVerified: dbUser.kyc_verified, chips: dbUser.chips || 0,
-          wallet: dbUser.chips || 0, createdAt: dbUser.created_at, password
+          wallet: dbUser.chips || 0, createdAt: dbUser.created_at
         };
         if (idx >= 0) users[idx] = merged; else users.push(merged);
         wzSaveUsers(users);

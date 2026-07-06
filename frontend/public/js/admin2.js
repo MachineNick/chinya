@@ -305,7 +305,7 @@ window.adminAddUser = function () {
   if (users.find(function(u){ return u.email === email || u.phone === phone; })) {
     showToast("User with this email/phone already exists", "error"); return;
   }
-  users.push({ uid: "u_" + Date.now(), fullName: name, phone: phone, email: email, password: pass, kycType: kyc, kycVerified: false, chips: chips, wallet: chips, createdAt: new Date().toISOString() });
+  users.push({ uid: "u_" + Date.now(), fullName: name, phone: phone, email: email, kycType: kyc, kycVerified: false, chips: chips, wallet: chips, createdAt: new Date().toISOString() });
   saveLiveUsers(users);
   showToast("User \"" + name + "\" created", "success");
   window.loadPanel("view-all-users", "View All Users");
