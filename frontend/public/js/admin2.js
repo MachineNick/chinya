@@ -158,11 +158,37 @@ window.adminChipOp = function (uid, direction) {
   showToast((direction > 0 ? "Added " : "Subtracted ") + amt + " chips " + (direction > 0 ? "to " : "from ") + (u.fullName || u.name) + ". Balance: " + u.chips, "success");
 };
 
-window.adminDeleteSet = function (id) {
-  var sets = getLiveSets().filter(function(s){ return s.id !== id; });
-  localStorage.setItem("winzo_sets_global", JSON.stringify(sets));
-  showToast("Challenge deleted", "success");
-  window.loadPanel("all-challenges", "View All Challenges");
+window.adminDeleteSet = async function (id) {
+  if (!confirm("Cancel this challenge and refund chips to both players?")) return;
+  var sets = getLiveSets();
+  var s = sets.find(function(x){ return x.id === id; });
+
+  // Refund chips to setter
+  if (s) {
+    var users = getLiveUsers();
+    var refundUids = [s.uid];
+    if (s.acceptedBy) refundUids.push(s.acceptedBy);
+    refundUids.forEach(function(uid) {
+      var u = users.find(function(x){ return x.uid === uid; });
+      if (u) {
+        u.chips = Number(u.chips || 0) + Number(s.value || 0);
+        u.wallet = u.chips;
+        if (window.WINZO_SB) window.WINZO_SB.from("users").update({ chips: u.chips }).eq("uid", uid).then(function(){});
+      }
+    });
+    saveLiveUsers(users);
+  }
+
+  // Delete from localStorage
+  localStorage.setItem("winzo_sets_global", JSON.stringify(sets.filter(function(x){ return x.id !== id; })));
+
+  // Delete from Supabase
+  if (window.WINZO_SB) {
+    try { await window.WINZO_SB.from("challenges").delete().eq("id", id); } catch(e) {}
+  }
+
+  showToast("Challenge cancelled & chips refunded.", "success");
+  window.syncAndReload("running-challenges", "Running Challenges");
 };
 
 window.adminToggleKyc = function (uid, approve) {
