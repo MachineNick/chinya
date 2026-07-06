@@ -87,3 +87,4 @@ credentials.json
 *.key
 .credentials
 pintumosa_secrets.env
+frontend/public/js/env.js
