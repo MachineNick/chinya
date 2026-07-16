@@ -8,21 +8,33 @@ const WZ_KEYS = {
   SESSION: "winzo_session"
 };
 
+// In-memory caches to avoid repeated localStorage parses
+let _sessionCache = undefined;
+let _usersCache = null;
+
 function wzGetUsers() {
-  try { return JSON.parse(localStorage.getItem(WZ_KEYS.USERS) || "[]"); }
-  catch { return []; }
+  if (_usersCache !== null) return _usersCache;
+  try { _usersCache = JSON.parse(localStorage.getItem(WZ_KEYS.USERS) || "[]"); }
+  catch { _usersCache = []; }
+  return _usersCache;
 }
 function wzSaveUsers(users) {
+  _usersCache = users;
   localStorage.setItem(WZ_KEYS.USERS, JSON.stringify(users));
 }
 function wzSetSession(user) {
+  _sessionCache = user;
   localStorage.setItem(WZ_KEYS.SESSION, JSON.stringify(user));
 }
 function wzGetSession() {
-  try { return JSON.parse(localStorage.getItem(WZ_KEYS.SESSION) || "null"); }
-  catch { return null; }
+  if (_sessionCache !== undefined) return _sessionCache;
+  try { _sessionCache = JSON.parse(localStorage.getItem(WZ_KEYS.SESSION) || "null"); }
+  catch { _sessionCache = null; }
+  return _sessionCache;
 }
 function wzClearSession() {
+  _sessionCache = null;
+  _usersCache = null;
   localStorage.removeItem(WZ_KEYS.SESSION);
 }
 

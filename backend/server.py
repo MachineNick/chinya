@@ -37,7 +37,8 @@ async def upload_kyc(uid: str = Form(...), file: UploadFile = File(...), authori
     try:
         sb_url = os.environ.get("SUPABASE_URL", "")
         sb_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-        resp = httpx.get(f"{sb_url}/auth/v1/user", headers={"Authorization": f"Bearer {token}", "apikey": sb_key}, timeout=5)
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{sb_url}/auth/v1/user", headers={"Authorization": f"Bearer {token}", "apikey": sb_key}, timeout=5)
         user_data = resp.json()
         if resp.status_code != 200 or user_data.get("id") != uid:
             raise HTTPException(403, "Forbidden: uid mismatch")
