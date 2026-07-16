@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "buildCommand": "node scripts/generate-env.js",
+  "outputDirectory": "frontend/public",
+  "functions": {
+    "api/kyc/upload.py": { "runtime": "python3.12" },
+    "api/kyc/url.py":    { "runtime": "python3.12" }
+  },
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/api/kyc/upload", "destination": "/api/kyc/upload.py" },
+    { "source": "/api/kyc/url",    "destination": "/api/kyc/url.py" },
+    { "source": "/dashboard",      "destination": "/dashboard.html" },
+    { "source": "/login",          "destination": "/login.html" },
+    { "source": "/signup",         "destination": "/signup.html" },
+    { "source": "/profile",        "destination": "/profile.html" },
+    { "source": "/admin",          "destination": "/admin.html" },
+    { "source": "/ludo",           "destination": "/ludo.html" },
+    { "source": "/snake-ladder",   "destination": "/snake-ladder.html" }
+  ]
+}

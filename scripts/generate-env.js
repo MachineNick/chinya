@@ -19,7 +19,7 @@ if (fs.existsSync(rootEnv)) {
 
 const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY;
-const BACKEND_URL   = process.env.BACKEND_URL || "http://localhost:8001";
+const BACKEND_URL   = process.env.BACKEND_URL || "";
 
 if (!SUPABASE_URL || !SUPABASE_ANON) {
   console.error("ERROR: SUPABASE_URL and SUPABASE_ANON_KEY must be set.");
