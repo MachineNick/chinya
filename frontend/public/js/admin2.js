@@ -253,11 +253,12 @@ window.adminApproveKyc = function (uid) {
 
 window.adminSaveSettings = function () {
   var bonusPhone = document.getElementById("set-bonus-phone").value.trim();
+  var adminUser  = document.getElementById("set-admin-user").value.trim();
   var adminPass  = document.getElementById("set-admin-pass").value.trim();
   var upiId      = document.getElementById("set-upi-id").value.trim();
   var upiName    = document.getElementById("set-upi-name").value.trim();
-  if (!bonusPhone || !adminPass) return showToast("Bonus phone and passcode are required.", "error");
-  if (window.WinzoSettings) window.WinzoSettings.save({ bonusPhone, adminPass, upiId, upiName });
+  if (!bonusPhone || !adminUser || !adminPass) return showToast("Bonus phone, username and password are required.", "error");
+  if (window.WinzoSettings) window.WinzoSettings.save({ bonusPhone, adminUser, adminPass, upiId, upiName });
   showToast("Settings saved!", "success");
 };
 
@@ -291,6 +292,88 @@ window.adminManualWithdraw = function () {
   wds.push({ id: "w_" + Date.now(), user: u.fullName || u.name, amount: amt, method: "Admin", status: "approved", time: new Date().toLocaleString("en-IN") });
   localStorage.setItem("winzo_withdraws", JSON.stringify(wds));
   showToast("₹" + amt.toLocaleString("en-IN") + " withdrawn from " + (u.fullName || u.name), "success");
+};
+
+// ── Admin Reset User Password ─────────────────────────────────
+window.adminResetUserPassword = function (uid, email, name) {
+  // Build modal
+  var existing = document.getElementById("admin-reset-modal");
+  if (existing) existing.remove();
+
+  var modal = document.createElement("div");
+  modal.id = "admin-reset-modal";
+  modal.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:16px;";
+  modal.innerHTML = `
+    <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:12px;padding:32px;width:100%;max-width:420px;box-shadow:var(--shadow-card);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h3 style="font-family:var(--font-head);font-size:1rem;color:var(--accent);"><i class="ph-fill ph-key"></i> Reset Password</h3>
+        <button onclick="document.getElementById('admin-reset-modal').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;"><i class="ph ph-x"></i></button>
+      </div>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">Setting new password for <strong style="color:var(--text-primary);">${name}</strong> (${email})</p>
+      <div id="admin-reset-err" style="display:none;background:rgba(255,59,48,0.1);border:1px solid var(--danger);border-radius:6px;padding:10px 14px;color:var(--danger);font-size:13px;margin-bottom:14px;"></div>
+      <div id="admin-reset-ok" style="display:none;background:rgba(0,230,118,0.1);border:1px solid var(--success);border-radius:6px;padding:10px 14px;color:var(--success);font-size:13px;margin-bottom:14px;"></div>
+      <div class="field" style="margin-bottom:14px;">
+        <label style="font-size:13px;color:var(--text-secondary);">New Password</label>
+        <input id="admin-reset-pass" type="password" placeholder="Min 8 characters" minlength="8"
+          style="width:100%;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:6px;color:#fff;font-size:14px;" />
+      </div>
+      <div class="field" style="margin-bottom:20px;">
+        <label style="font-size:13px;color:var(--text-secondary);">Confirm Password</label>
+        <input id="admin-reset-confirm" type="password" placeholder="Repeat password"
+          style="width:100%;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:6px;color:#fff;font-size:14px;" />
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button id="admin-reset-btn" class="btn btn-primary" style="flex:1;" onclick="adminDoResetPassword('${uid}','${email}')">
+          <i class="ph-fill ph-key"></i> Set Password
+        </button>
+        <button class="btn btn-secondary" onclick="document.getElementById('admin-reset-modal').remove()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById("admin-reset-pass").focus();
+};
+
+window.adminDoResetPassword = async function (uid, email) {
+  var pass    = document.getElementById("admin-reset-pass").value;
+  var confirm = document.getElementById("admin-reset-confirm").value;
+  var errEl   = document.getElementById("admin-reset-err");
+  var okEl    = document.getElementById("admin-reset-ok");
+  var btn     = document.getElementById("admin-reset-btn");
+
+  errEl.style.display = "none";
+  okEl.style.display  = "none";
+
+  if (pass.length < 8) { errEl.textContent = "Password must be at least 8 characters."; errEl.style.display = "block"; return; }
+  if (pass !== confirm) { errEl.textContent = "Passwords do not match."; errEl.style.display = "block"; return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ph ph-circle-notch" style="animation:spin 1s linear infinite"></i> Updating…';
+
+  try {
+    if (window.WINZO_SB) {
+      // Use Supabase Admin API via service role — falls back to user update if no service role
+      const { error } = await window.WINZO_SB.auth.admin
+        ? await window.WINZO_SB.auth.admin.updateUserById(uid, { password: pass })
+        : await window.WINZO_SB.rpc("admin_reset_password", { p_uid: uid, p_password: pass });
+      if (error) throw new Error(error.message);
+    }
+    // Always update localStorage copy too
+    var users = getLiveUsers();
+    var u = users.find(function(x){ return x.uid === uid; });
+    if (u) { u.password = pass; saveLiveUsers(users); }
+
+    okEl.textContent = "✓ Password updated successfully.";
+    okEl.style.display = "block";
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph-fill ph-key"></i> Set Password';
+    showToast("Password reset for " + email, "success");
+    setTimeout(function(){ document.getElementById("admin-reset-modal")?.remove(); }, 1800);
+  } catch (e) {
+    errEl.textContent = e.message || "Failed to reset password.";
+    errEl.style.display = "block";
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph-fill ph-key"></i> Set Password';
+  }
 };
 
 window.adminAddUser = function () {
@@ -479,43 +562,51 @@ window.showAddBlacklist = function () {
     if (window._startNotifPolling) window._startNotifPolling();
   }
 
-  if (sessionStorage.getItem(GATE_KEY) === "1") unlock();
-
-  // Load settings from Supabase before passcode check
-  if (window.WinzoSettings && window.WinzoSettings.load) {
-    window.WinzoSettings.load().then(function() {
-      if (sessionStorage.getItem(GATE_KEY) === "1") unlock();
-    });
+  function showErr(msg) {
+    var err = document.getElementById("gate-error");
+    err.textContent = msg;
+    err.style.display = "block";
   }
 
-  document.getElementById("gate-form").addEventListener("submit", function (e) {
+  // On every load, verify Supabase session + admin role via JWT — never trust client-side DB column
+  (async function checkExistingSession() {
+    if (!window.WINZO_SB) return;
+    try {
+      const { data: { user } } = await window.WINZO_SB.auth.getUser();
+      if (user?.app_metadata?.role === 'admin') unlock();
+    } catch(e) {}
+  })();
+
+  document.getElementById("gate-form").addEventListener("submit", async function (e) {
     e.preventDefault();
-    var val = document.getElementById("passcode").value;
-    var settings = window.WinzoSettings ? window.WinzoSettings.get() : {};
-    var correctPass = (settings.adminPass && settings.adminPass.trim()) || "winzo-admin-2026";
-    if (val === correctPass) {
-      sessionStorage.setItem(GATE_KEY, "1");
-      unlock();
-    } else {
-      // Retry after fresh Supabase load in case settings weren't loaded yet
-      if (window.WinzoSettings && window.WinzoSettings.load) {
-        window.WinzoSettings.load().then(function() {
-          var fresh = window.WinzoSettings.get();
-          var freshPass = (fresh.adminPass && fresh.adminPass.trim()) || "winzo-admin-2026";
-          if (val === freshPass) {
-            sessionStorage.setItem(GATE_KEY, "1");
-            unlock();
-          } else {
-            var err = document.getElementById("gate-error");
-            err.textContent = "Incorrect passcode.";
-            err.style.display = "block";
-          }
-        });
-      } else {
-        var err = document.getElementById("gate-error");
-        err.textContent = "Incorrect passcode.";
-        err.style.display = "block";
+    var email = document.getElementById("gate-username").value.trim();
+    var pass  = document.getElementById("passcode").value;
+    var btn   = e.target.querySelector("button[type=submit]");
+    document.getElementById("gate-error").style.display = "none";
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-circle-notch" style="animation:spin 1s linear infinite"></i> Verifying…';
+
+    try {
+      if (!window.WINZO_SB) throw new Error("Supabase not configured.");
+
+      // 1. Sign in with Supabase Auth
+      const { data, error } = await window.WINZO_SB.auth.signInWithPassword({ email, password: pass });
+      if (error) throw new Error("Invalid email or password.");
+
+      // 2. Check admin role via JWT app_metadata (set server-side, not spoofable)
+      const { data: { user: authedUser } } = await window.WINZO_SB.auth.getUser();
+      if (authedUser?.app_metadata?.role !== 'admin') {
+        await window.WINZO_SB.auth.signOut();
+        throw new Error("Access denied. This account does not have admin privileges.");
       }
+
+      sessionStorage.removeItem(GATE_KEY);
+      unlock();
+    } catch (err) {
+      showErr(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ph-fill ph-lock-open"></i> Unlock Dashboard';
     }
   });
 

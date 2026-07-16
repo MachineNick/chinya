@@ -99,12 +99,16 @@ async function getLiveBlacklistAsync() {
 function saveLiveUsers(arr) {
   localStorage.setItem("winzo_users", JSON.stringify(arr));
   if (!window.WINZO_SB) return;
-  arr.forEach(function(u) {
-    window.WINZO_SB.from("users").upsert({
-      uid:u.uid, full_name:u.fullName||u.name, phone:u.phone, email:u.email,
-      kyc_type:u.kycType, kyc_url:u.kycUrl, kyc_verified:u.kycVerified||false,
-      chips:u.chips||0
-    }).then(function(){});
+  // Only push to Supabase if an authenticated admin session exists
+  window.WINZO_SB.auth.getSession().then(function({ data: { session } }) {
+    if (!session) return;
+    arr.forEach(function(u) {
+      window.WINZO_SB.from("users").upsert({
+        uid:u.uid, full_name:u.fullName||u.name, phone:u.phone, email:u.email,
+        kyc_type:u.kycType, kyc_url:u.kycUrl, kyc_verified:u.kycVerified||false,
+        chips:u.chips||0
+      }).then(function(){});
+    });
   });
 }
 

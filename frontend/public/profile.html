@@ -56,6 +56,20 @@
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-title" style="margin-bottom:16px;">
+        <h2 style="font-size:1.2rem;">Change Password</h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:400px;">
+        <input id="cp-current" type="password" placeholder="Current password" class="field-input" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-primary);font-size:14px;" />
+        <input id="cp-new" type="password" placeholder="New password" class="field-input" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-primary);font-size:14px;" />
+        <input id="cp-confirm" type="password" placeholder="Confirm new password" class="field-input" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-primary);font-size:14px;" />
+        <button id="cp-btn" class="btn btn-primary" style="align-self:flex-start;" onclick="handleChangePassword()">
+          <i class="ph ph-lock-key"></i> Update Password
+        </button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="section-title" style="margin-bottom:16px;">
         <h2 style="font-size:1.2rem;">KYC Document</h2>
@@ -113,6 +127,45 @@
         window.WINZO_SB.from("users").select("*").eq("uid", session.uid).single().then(({ data }) => {
           if (data) renderProfile({ fullName:data.full_name, email:data.email, phone:data.phone, kycType:data.kyc_type, kycUrl:data.kyc_url, kycVerified:data.kyc_verified, createdAt:data.created_at });
         });
+      }
+    }
+
+    async function handleChangePassword() {
+      const current = document.getElementById("cp-current").value;
+      const newPw   = document.getElementById("cp-new").value;
+      const confirm = document.getElementById("cp-confirm").value;
+      if (!current || !newPw || !confirm) return window.WinzoAuth.toast("Fill all password fields.", "error");
+      if (newPw.length < 6) return window.WinzoAuth.toast("New password must be at least 6 characters.", "error");
+      if (newPw !== confirm) return window.WinzoAuth.toast("Passwords do not match.", "error");
+
+      const btn = document.getElementById("cp-btn");
+      btn.disabled = true; btn.textContent = "Updating…";
+
+      try {
+        // Supabase Auth path
+        if (window.WINZO_SB) {
+          // Re-authenticate by signing in first to verify current password
+          const { error: signInErr } = await window.WINZO_SB.auth.signInWithPassword({ email: session.email, password: current });
+          if (signInErr) throw new Error("Current password is incorrect.");
+          const { error } = await window.WINZO_SB.auth.updateUser({ password: newPw });
+          if (error) throw new Error(error.message);
+        } else {
+          // localStorage fallback
+          const users = window.WinzoAuth.getUsers();
+          const u = users.find(x => x.uid === session.uid);
+          if (!u || u.password !== current) throw new Error("Current password is incorrect.");
+          u.password = newPw;
+          window.WinzoAuth.saveUsers(users);
+        }
+        window.WinzoAuth.toast("Password updated successfully!", "success");
+        document.getElementById("cp-current").value = "";
+        document.getElementById("cp-new").value = "";
+        document.getElementById("cp-confirm").value = "";
+      } catch(e) {
+        window.WinzoAuth.toast(e.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph ph-lock-key"></i> Update Password';
       }
     }
   </script>

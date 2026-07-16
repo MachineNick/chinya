@@ -112,7 +112,6 @@ async function wzSignup(payload) {
     fullName: payload.fullName,
     phone: payload.phone,
     email: payload.email,
-    password: payload.password,   // kept only for localStorage fallback login (no Supabase)
     kycType: payload.kycType,
     kycUrl: kycResult.kycUrl,
     kycKey: kycResult.kycKey,
@@ -151,6 +150,10 @@ async function wzLogin(identifier, password) {
         password
       });
       if (error) throw new Error(error.message);
+      // Persist Supabase session so auth.updateUser() works across pages
+      if (data?.session) {
+        localStorage.setItem("winzo_sb_session", JSON.stringify(data.session));
+      }
       // Sync fresh user data from Supabase DB
       const { data: dbUser } = await window.WINZO_SB.from("users").select("*").eq("email", identifier).single();
       if (dbUser) {
@@ -187,8 +190,23 @@ function wzLogout() {
   if (window.WINZO_FIREBASE_READY && window.WINZO_AUTH) {
     try { window.WINZO_AUTH.signOut(); } catch (e) { /* noop */ }
   }
+  if (window.WINZO_SB) {
+    window.WINZO_SB.auth.signOut().catch(() => {});
+  }
+  localStorage.removeItem("winzo_sb_session");
   wzClearSession();
   window.location.href = "index.html";
+}
+
+async function wzResetPassword(email) {
+  if (window.WINZO_SB) {
+    const { error } = await window.WINZO_SB.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + "/login.html"
+    });
+    if (error) throw new Error(error.message);
+    return;
+  }
+  throw new Error("Password reset requires Supabase. Please contact support.");
 }
 
 // Expose to window
@@ -196,6 +214,7 @@ window.WinzoAuth = {
   signup: wzSignup,
   login: wzLogin,
   logout: wzLogout,
+  resetPassword: wzResetPassword,
   session: wzGetSession,
   requireAuth: wzRequireAuth,
   redirectIfAuthed: wzRedirectIfAuthed,
@@ -212,11 +231,12 @@ function wzGetSettings() {
     const s = JSON.parse(localStorage.getItem(WZ_SETTINGS_KEY) || "{}");
     return {
       bonusPhone: s.bonusPhone || "+91 99999 99999",
+      adminUser:  s.adminUser  || "admin",
       adminPass:  s.adminPass  || "winzo-admin-2026",
       upiId:      s.upiId      || "winzoindia@upi",
       upiName:    s.upiName    || "WinzoIndia"
     };
-  } catch { return { bonusPhone: "+91 99999 99999", adminPass: "winzo-admin-2026", upiId: "winzoindia@upi", upiName: "WinzoIndia" }; }
+  } catch { return { bonusPhone: "+91 99999 99999", adminUser: "admin", adminPass: "winzo-admin-2026", upiId: "winzoindia@upi", upiName: "WinzoIndia" }; }
 }
 async function wzLoadSettingsFromSupabase() {
   if (!window.WINZO_SB) return;
@@ -246,9 +266,26 @@ async function wzGetSetsAsync() {
     try {
       const { data } = await window.WINZO_SB.from("challenges").select("*").order("at", { ascending: false });
       if (data) {
-        const mapped = data.map(r => ({ id:r.id, gameId:r.game_id, uid:r.uid, byName:r.by_name, value:r.value, gameType:r.game_type, acceptedBy:r.accepted_by, acceptedByName:r.accepted_by_name, acceptedAt:r.accepted_at, roomCode:r.room_code, at:r.at }));
-        localStorage.setItem(WZ_SETS_KEY, JSON.stringify(mapped));
-        return mapped;
+        const remote = data.map(r => ({ id:r.id, gameId:r.game_id, uid:r.uid, byName:r.by_name, value:r.value, gameType:r.game_type, acceptedBy:r.accepted_by, acceptedByName:r.accepted_by_name, acceptedAt:r.accepted_at, roomCode:r.room_code, at:r.at }));
+        const local = wzGetSets();
+        const localMap = new Map(local.map(s => [s.id, s]));
+        // For each remote entry, prefer local version if local has newer info (acceptedBy, roomCode set locally but not yet in Supabase)
+        const merged = remote.map(r => {
+          const loc = localMap.get(r.id);
+          if (!loc) return r;
+          return {
+            ...r,
+            acceptedBy: r.acceptedBy || loc.acceptedBy || null,
+            acceptedByName: r.acceptedByName || loc.acceptedByName || null,
+            acceptedAt: r.acceptedAt || loc.acceptedAt || null,
+            roomCode: r.roomCode || loc.roomCode || null,
+          };
+        });
+        // Add local-only entries not yet in Supabase
+        const remoteIds = new Set(remote.map(s => s.id));
+        local.filter(s => !remoteIds.has(s.id)).forEach(s => merged.push(s));
+        localStorage.setItem(WZ_SETS_KEY, JSON.stringify(merged));
+        return merged;
       }
     } catch(e) { console.warn("Supabase sets fetch failed:", e.message); }
   }

@@ -327,76 +327,54 @@
     }
     document.querySelectorAll("[data-user-name]").forEach(el => el.textContent = session.fullName.split(" ")[0]);
     refreshView();
-    renderSets();
-    renderMatchRoom();
+    // Initial load: fetch fresh from Supabase once, then render
+    window.WinzoSets.getAsync().then(function(arr) {
+      _paintSets(arr);
+      _paintMatchRoom(arr);
+    });
     setInterval(refreshView, 10000);
 
     // Single shared poll — one Supabase fetch feeds both renders
     setInterval(function() {
-      window.WinzoSets.getAsync().then(function(arr) {
-        // --- sets ---
-        const sHash = JSON.stringify(arr.map(s => s.id + (s.acceptedBy||"")));
-        if (sHash !== _lastSetsHash) {
-          _lastSetsHash = sHash;
-          const listEl = document.getElementById("sets-list");
-          if (listEl) {
-            if (!arr.length) { listEl.innerHTML = `<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">No open challenges. Be the first to set one!</p>`; }
-            else { listEl.innerHTML = arr.slice().reverse().map((s,i) => {
-              const mine = s.uid === window.WinzoAuth.session().uid;
-              const label = GAME_LABELS[s.gameType] || s.gameType;
-              const action = s.acceptedBy
-                ? `<div class="set-status accepted"><i class="ph-fill ph-handshake"></i> Matched with ${s.acceptedByName||"Player"}</div>`
-                : mine
-                  ? `<button class="btn btn-secondary" onclick="cancelSet('${s.id}')"><i class="ph ph-x"></i> Cancel</button>`
-                  : `<button class="btn btn-primary" onclick="acceptSet('${s.id}')"><i class="ph-fill ph-sword"></i> Play</button>`;
-              return `<div class="set-row" data-testid="set-row-${i}"><div style="flex:1;font-size:15px;font-weight:600;"><span style="color:var(--accent);">${s.byName}</span> has set a challenge for <span style="color:var(--accent);">₹${Number(s.value).toLocaleString("en-IN")}</span> · <span class="set-tag" style="display:inline;">${label}</span></div><div>${action}</div></div>`;
-            }).join(""); }
-          }
-        }
-        // --- match room ---
-        const match = arr.find(s => s.acceptedBy && (s.uid === session.uid || s.acceptedBy === session.uid));
-        const results = JSON.parse(localStorage.getItem("winzo_results") || "[]");
-        const submitted = match ? !!results.find(r => r.challengeId === match.id && r.submitterUid === session.uid) : false;
-        const mHash = match ? (match.id + "|" + (match.roomCode||"") + "|" + submitted) : "none";
-        if (mHash !== _lastMatchHash) {
-          _lastMatchHash = mHash;
-          _renderMatchRoomWithArr(arr);
-        }
+      window.WinzoSets.getAsync().then(function(merged) {
+        // getAsync already merges remote+local and saves to localStorage
+        _paintSets(merged);
+        _paintMatchRoom(merged);
       });
-    }, 8000);
+    }, 3000);
 
     var _lastSetsHash = "";
-    function renderSets() {
+    function _paintSets(arr) {
       const listEl = document.getElementById("sets-list");
-      if (!listEl.innerHTML.trim()) listEl.innerHTML = `<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">Loading challenges...</p>`;
-      window.WinzoSets.getAsync().then(function(arr) {
-        const hash = JSON.stringify(arr.map(s => s.id + (s.acceptedBy||"")));
-        if (hash === _lastSetsHash) return;
-        _lastSetsHash = hash;
-        if (!arr.length) { listEl.innerHTML = `<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">No open challenges. Be the first to set one!</p>`; return; }
-        listEl.innerHTML = arr.slice().reverse().map((s,i) => {
-          const mine = s.uid === window.WinzoAuth.session().uid;
-          const label = GAME_LABELS[s.gameType] || s.gameType;
-          const action = s.acceptedBy
-            ? `<div class="set-status accepted"><i class="ph-fill ph-handshake"></i> Matched with ${s.acceptedByName||"Player"}</div>`
-            : mine
-              ? `<button class="btn btn-secondary" onclick="cancelSet('${s.id}')"><i class="ph ph-x"></i> Cancel</button>`
-              : `<button class="btn btn-primary" onclick="acceptSet('${s.id}')"><i class="ph-fill ph-sword"></i> Play</button>`;
-          return `<div class="set-row" data-testid="set-row-${i}">
-            <div style="flex:1;font-size:15px;font-weight:600;">
-              <span style="color:var(--accent);">${s.byName}</span> has set a challenge for
-              <span style="color:var(--accent);">₹${Number(s.value).toLocaleString("en-IN")}</span> · <span class="set-tag" style="display:inline;">${label}</span>
-            </div>
-            <div>${action}</div>
-          </div>`;
-        }).join("");
-      });
+      const hash = JSON.stringify(arr.map(s => s.id + (s.acceptedBy||"")));
+      if (hash === _lastSetsHash) return;
+      _lastSetsHash = hash;
+      if (!arr.length) { listEl.innerHTML = `<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">No open challenges. Be the first to set one!</p>`; return; }
+      listEl.innerHTML = arr.slice().reverse().map((s,i) => {
+        const mine = s.uid === session.uid;
+        const label = GAME_LABELS[s.gameType] || s.gameType;
+        const action = s.acceptedBy
+          ? `<div class="set-status accepted"><i class="ph-fill ph-handshake"></i> Matched with ${s.acceptedByName||"Player"}</div>`
+          : mine
+            ? `<button class="btn btn-secondary" onclick="cancelSet('${s.id}')"><i class="ph ph-x"></i> Cancel</button>`
+            : `<button class="btn btn-primary" onclick="acceptSet('${s.id}')"><i class="ph-fill ph-sword"></i> Play</button>`;
+        return `<div class="set-row" data-testid="set-row-${i}"><div style="flex:1;font-size:15px;font-weight:600;"><span style="color:var(--accent);">${s.byName}</span> has set a challenge for <span style="color:var(--accent);">₹${Number(s.value).toLocaleString("en-IN")}</span> · <span class="set-tag" style="display:inline;">${label}</span></div><div>${action}</div></div>`;
+      }).join("");
+    }
+    function renderSets() {
+      _lastSetsHash = "";
+      _paintSets(window.WinzoSets.get());
+    }
+    function renderMatchRoom() {
+      _lastMatchHash = "";
+      _paintMatchRoom(window.WinzoSets.get());
     }
 
     window.acceptSet = async function(id) {
       const arr = await window.WinzoSets.getAsync();
       const s = arr.find(x => x.id === id);
       if (!s || s.acceptedBy) return window.WinzoAuth.toast("Challenge already taken!", "error");
+      if (s.uid === session.uid) return window.WinzoAuth.toast("You cannot accept your own challenge.", "error");
       const users = window.WinzoAuth.getUsers();
       const fresh = users.find(u => u.uid === session.uid);
       if (!fresh || !fresh.kycVerified) return window.WinzoAuth.toast("Account pending approval.", "error");
@@ -405,10 +383,14 @@
       fresh.chips = chips - s.value; fresh.wallet = fresh.chips;
       window.WinzoAuth.saveUsers(users);
       s.acceptedBy = session.uid; s.acceptedByName = session.fullName.split(" ")[0]; s.acceptedAt = Date.now();
-      await window.WinzoSets.save(arr);
+      // Update local cache immediately so match room shows without waiting for Supabase
+      localStorage.setItem("winzo_sets_global", JSON.stringify(arr));
+      _lastSetsHash = ""; _lastMatchHash = "";
       window.WinzoAuth.toast("Challenge accepted! Contact admin for match room.", "success");
       renderSets();
       renderMatchRoom();
+      // Persist to Supabase in background
+      window.WinzoSets.save(arr);
     };
 
     window.cancelSet = async function(id) {
@@ -435,33 +417,99 @@
       if (val > chips) return window.WinzoAuth.toast(`Not enough chips! You have ${chips.toLocaleString("en-IN")}.`, "error", 4000);
       fresh.chips = chips - val; fresh.wallet = fresh.chips;
       window.WinzoAuth.saveUsers(users);
-      const arr = await window.WinzoSets.getAsync();
-      arr.push({ id:"s_"+Date.now(), gameId:"WZ-"+Math.random().toString(36).substr(2,7).toUpperCase(), uid:session.uid, byName:session.fullName.split(" ")[0], value:val, gameType:gt, at:Date.now() });
-      await window.WinzoSets.save(arr);
+      const newSet = { id:"s_"+Date.now(), gameId:"WZ-"+Math.random().toString(36).substr(2,7).toUpperCase(), uid:session.uid, byName:session.fullName.split(" ")[0], value:val, gameType:gt, at:Date.now() };
+      // Optimistically add to local storage first so renderSets shows it immediately
+      const arr = window.WinzoSets.get();
+      arr.push(newSet);
+      localStorage.setItem("winzo_sets_global", JSON.stringify(arr));
+      _lastSetsHash = ""; // force re-render
       document.getElementById("setValue").value = "";
       window.WinzoAuth.toast("Challenge posted!", "success");
+      const fb = document.getElementById("setbar-feedback");
+      fb.removeAttribute("hidden");
+      fb.innerHTML = `<i class="ph-fill ph-check-circle" style="color:var(--success);"></i> Your challenge for <strong>₹${val.toLocaleString("en-IN")}</strong> · ${GAME_LABELS[gt]||gt} is live! Waiting for an opponent.`;
       renderSets();
+      renderMatchRoom();
+      // Then persist to Supabase in background
+      window.WinzoSets.save(arr);
     });
 
     var _lastMatchHash = "";
-    function renderMatchRoom() {
-      window.WinzoSets.getAsync().then(function(arr) {
-        const match = arr.find(s => s.acceptedBy && (s.uid === session.uid || s.acceptedBy === session.uid));
-        const results = JSON.parse(localStorage.getItem("winzo_results") || "[]");
-        const submitted = match ? !!results.find(r => r.challengeId === match.id && r.submitterUid === session.uid) : false;
-        const hash = match ? (match.id + "|" + (match.roomCode||"") + "|" + submitted) : "none";
-        if (hash === _lastMatchHash) return;
-        _lastMatchHash = hash;
-        _renderMatchRoomWithArr(arr);
-      });
+    function _paintMatchRoom(arr) {
+      const results = JSON.parse(localStorage.getItem("winzo_results") || "[]");
+      const match = arr.find(s => s.acceptedBy && (s.uid === session.uid || s.acceptedBy === session.uid))
+                 || arr.find(s => !s.acceptedBy && s.uid === session.uid);
+      const submitted = match ? !!results.find(r => r.challengeId === match.id && r.submitterUid === session.uid) : false;
+      const hash = match ? (match.id + "|" + (match.acceptedBy||"pending") + "|" + (match.roomCode||"") + "|" + submitted) : "none";
+      if (hash === _lastMatchHash) return;
+      _lastMatchHash = hash;
+      _renderMatchRoomWithArr(arr);
     }
     function _renderMatchRoomWithArr(arr) {
       const results = JSON.parse(localStorage.getItem("winzo_results") || "[]");
-      // Find active matched challenge for this user that hasn't been submitted yet
-      const match = arr.find(s => s.acceptedBy && (s.uid === session.uid || s.acceptedBy === session.uid));
+      // Show widget for: matched challenges OR user's own pending challenge
+      const match = arr.find(s => s.acceptedBy && (s.uid === session.uid || s.acceptedBy === session.uid))
+                 || arr.find(s => !s.acceptedBy && s.uid === session.uid);
       const section = document.getElementById("match-room-section");
       const card = document.getElementById("match-room-card");
       if (!match) { section.hidden = true; return; }
+      // Pending — waiting for opponent, but show full match controls
+      if (!match.acceptedBy) {
+        const label = GAME_LABELS[match.gameType] || match.gameType;
+        section.hidden = false;
+        card.innerHTML = `
+          <div style="margin-bottom:18px;">
+            <span class="eyebrow"><i class="ph-fill ph-hourglass" style="color:var(--accent);"></i> Waiting for Opponent</span>
+            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:16px;">
+              <div><div style="font-size:11px;color:var(--text-muted);">Game ID</div><div style="font-weight:700;color:var(--accent);letter-spacing:1px;">${match.gameId||match.id}</div></div>
+              <div><div style="font-size:11px;color:var(--text-muted);">Game</div><div style="font-weight:700;">${label}</div></div>
+              <div><div style="font-size:11px;color:var(--text-muted);">Amount</div><div style="font-weight:700;color:var(--accent);">₹${Number(match.value).toLocaleString("en-IN")}</div></div>
+            </div>
+          </div>
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Share Game Code</div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <input id="room-code-input" type="text" placeholder="Enter room code to share" value="${match.roomCode||''}" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:#0F0F16;color:#fff;font-size:14px;" />
+              <button class="btn btn-primary" style="padding:8px 16px;font-size:13px;" onclick="shareRoomCode('${match.id}')"><i class="ph-fill ph-share-network"></i> Share</button>
+            </div>
+          </div>
+          <hr style="border-color:rgba(255,255,255,0.08);margin:18px 0;" />
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:700;margin-bottom:10px;">Update Game Status</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="game-result" value="won" /> <span class="badge badge-green">I Won</span></label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="game-result" value="lost" /> <span class="badge badge-red">I Lost</span></label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="game-result" value="cancel" /> <span class="badge badge-yellow">Cancel Game</span></label>
+            </div>
+          </div>
+          <div style="margin-bottom:14px;" id="screenshot-section">
+            <div style="font-weight:700;margin-bottom:8px;">Upload Screenshot</div>
+            <label class="file-drop" for="result-proof" style="padding:14px;">
+              <i class="ph ph-cloud-arrow-up"></i>
+              <p><strong>Click to upload</strong> your game screenshot</p>
+              <p class="hint">JPG / PNG · Max 5 MB</p>
+              <input id="result-proof" type="file" accept="image/*" />
+            </label>
+            <div id="result-proof-info" style="font-size:12px;color:var(--success);margin-top:4px;"></div>
+          </div>
+          <div style="margin-bottom:18px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+              <input type="checkbox" id="room-code-verified" />
+              I have verified the room code
+            </label>
+          </div>
+          <button class="btn btn-primary btn-block" onclick="postResult('${match.id}')">
+            <i class="ph-fill ph-paper-plane-tilt"></i> Post Result
+          </button>`;
+        document.getElementById("result-proof").addEventListener("change", function() {
+          const f = this.files[0];
+          if (f) document.getElementById("result-proof-info").textContent = `✓ ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`;
+        });
+        document.querySelectorAll("input[name='game-result']").forEach(r => r.addEventListener("change", function() {
+          document.getElementById("screenshot-section").style.display = this.value === "cancel" ? "none" : "";
+        }));
+        return;
+      }
       // Check if current user already submitted result
       const alreadySubmitted = results.find(r => r.challengeId === match.id && r.submitterUid === session.uid);
       if (alreadySubmitted) {

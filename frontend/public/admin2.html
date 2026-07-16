@@ -24,12 +24,15 @@
       <span>WinzoIndia</span>
     </div>
     <h2>Admin Console</h2>
-    <p>Enter your passcode to access the dashboard.</p>
+    <p>Sign in with your admin account to continue.</p>
     <form id="gate-form">
       <div class="field">
-        <label>Passcode</label>
-        <input id="passcode" type="password" placeholder="••••••••••" required />
-        <span class="hint">Default: <code>winzo-admin-2026</code></span>
+        <label>Email</label>
+        <input id="gate-username" type="email" placeholder="admin@yourdomain.com" required autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input id="passcode" type="password" placeholder="••••••••••" required autocomplete="current-password" />
       </div>
       <div id="gate-error" class="form-error"></div>
       <button class="btn btn-primary btn-block btn-lg" type="submit">
@@ -138,7 +141,7 @@
     </nav>
 
     <div class="a2-sidebar-footer">
-      <a href="dashboard.html" class="btn btn-secondary" style="width:100%;justify-content:center;font-size:12px;padding:10px;">
+      <a href="#" onclick="if(window.WINZO_SB)window.WINZO_SB.auth.signOut().finally(()=>window.location.href='index.html');else window.location.href='index.html';" class="btn btn-secondary" style="width:100%;justify-content:center;font-size:12px;padding:10px;">
         <i class="ph ph-sign-out"></i> Exit to Site
       </a>
     </div>

@@ -28,7 +28,23 @@ def root():
     return {"message": "WinzoIndia API running"}
 
 @api_router.post("/kyc/upload")
-async def upload_kyc(uid: str = Form(...), file: UploadFile = File(...)):
+async def upload_kyc(uid: str = Form(...), file: UploadFile = File(...), authorization: str = Form(default="")):
+    # Validate bearer token matches uid via Supabase JWT
+    import httpx, json as _json
+    token = authorization.replace("Bearer ", "").strip()
+    if not token:
+        raise HTTPException(401, "Unauthorized")
+    try:
+        sb_url = os.environ.get("SUPABASE_URL", "")
+        sb_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+        resp = httpx.get(f"{sb_url}/auth/v1/user", headers={"Authorization": f"Bearer {token}", "apikey": sb_key}, timeout=5)
+        user_data = resp.json()
+        if resp.status_code != 200 or user_data.get("id") != uid:
+            raise HTTPException(403, "Forbidden: uid mismatch")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(401, "Token validation failed")
     if file.size and file.size > 5 * 1024 * 1024:
         raise HTTPException(400, "File must be under 5MB")
     ext = Path(file.filename).suffix.lower()
@@ -41,7 +57,10 @@ async def upload_kyc(uid: str = Form(...), file: UploadFile = File(...)):
     return {"kycUrl": url, "kycKey": key}
 
 @api_router.get("/kyc/url")
-def get_kyc_url(key: str):
+def get_kyc_url(key: str, authorization: str = ""):
+    token = authorization.replace("Bearer ", "").strip()
+    if not token:
+        raise HTTPException(401, "Unauthorized")
     url = storj.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": key}, ExpiresIn=3600)
     return {"url": url}
 
@@ -49,7 +68,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
