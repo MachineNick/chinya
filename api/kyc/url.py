@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler
-import os, boto3, json
+import os, boto3, json, httpx
 from urllib.parse import urlparse, parse_qs
 from botocore.client import Config
 
@@ -27,6 +27,23 @@ class handler(BaseHTTPRequestHandler):
         token = self.headers.get("Authorization", "").replace("Bearer ", "").strip()
         if not token or not key:
             self._error(401, "Unauthorized"); return
+
+        # Validate token and verify the key belongs to the requesting user
+        sb_url = os.environ.get("SUPABASE_URL", "")
+        sb_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+        try:
+            resp = httpx.get(f"{sb_url}/auth/v1/user",
+                             headers={"Authorization": f"Bearer {token}", "apikey": sb_key},
+                             timeout=5)
+            if resp.status_code != 200:
+                self._error(403, "Forbidden"); return
+            uid = resp.json().get("id", "")
+            # Key must be scoped to this user: kyc/{uid}/... or reports/{uid}/...
+            if not (key.startswith(f"kyc/{uid}/") or key.startswith(f"reports/{uid}/")):
+                self._error(403, "Forbidden"); return
+        except Exception:
+            self._error(401, "Token validation failed"); return
+
         url = _storj().generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": key}, ExpiresIn=3600)
         self._cors()
         self.send_response(200)
@@ -35,7 +52,8 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"url": url}).encode())
 
     def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        allowed = os.environ.get("CORS_ORIGIN", "https://winzoindia.vercel.app")
+        self.send_header("Access-Control-Allow-Origin", allowed)
         self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Authorization")
 

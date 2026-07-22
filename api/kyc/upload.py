@@ -76,7 +76,8 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"kycUrl": url, "kycKey": key}).encode())
 
     def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        allowed = os.environ.get("CORS_ORIGIN", "https://winzoindia.vercel.app")
+        self.send_header("Access-Control-Allow-Origin", allowed)
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 

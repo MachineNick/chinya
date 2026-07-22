@@ -437,8 +437,8 @@ window.showAddBlacklist = function () {
   if (!tbody) return;
   var tr = document.createElement("tr");
   tr.id = "bl-" + id;
-  tr.innerHTML = "<td>—</td><td><strong>" + name.trim() + "</strong></td><td>" + reason + "</td><td>" + new Date().toISOString().slice(0,10) + "</td>"
-    + "<td><button class='btn btn-secondary' style='padding:5px 10px;font-size:11px;' onclick=\"removeBlacklist('" + id + "')\"><i class='ph ph-trash'></i> Remove</button></td>";
+  tr.innerHTML = "<td>—</td><td><strong>" + esc(name.trim()) + "</strong></td><td>" + esc(reason) + "</td><td>" + new Date().toISOString().slice(0,10) + "</td>"
+    + "<td><button class='btn btn-secondary' style='padding:5px 10px;font-size:11px;' onclick=\"removeBlacklist('" + esc(id) + "')\"><i class='ph ph-trash'></i> Remove</button></td>";
   tbody.appendChild(tr);
   showToast("\"" + name.trim() + "\" blacklisted", "success");
 };
