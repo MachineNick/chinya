@@ -1,0 +1,1 @@
+-- Run this in Supabase Dashboard → SQL Editor

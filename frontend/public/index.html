@@ -28,6 +28,7 @@
         <li><a href="#features">Why Winzo</a></li>
         <li><a href="dashboard.html">Play</a></li>
       </ul>
+      <a href="https://wa.me/919812543183" target="_blank" rel="noopener" class="wz-helpline" title="WhatsApp Helpline"><i class="ph-fill ph-whatsapp-logo"></i><span> +91-9812543183</span></a>
       <div class="nav-actions" id="nav-auth">
         <a href="login.html" class="btn btn-secondary" data-testid="nav-login-btn">Sign in</a>
         <a href="signup.html" class="btn btn-primary" data-testid="nav-signup-btn">Get started</a>
@@ -108,38 +109,16 @@
     </div>
   </section>
 
-  <!-- GAMES PREVIEW -->
+  <!-- LOBBY OPTIONS -->
   <section class="section" id="games" style="padding-top:20px;">
     <div class="container">
       <div class="section-head">
-        <span class="eyebrow">Signature Games</span>
-        <h2>Classic titles. Reimagined.</h2>
+        <span class="eyebrow">Choose Your Battle</span>
+        <h2>Pick a lobby &amp; play.</h2>
+        <p>Select any game mode below and jump straight into the action.</p>
       </div>
-      <div class="game-grid">
-        <a href="ludo.html" class="game-card" data-testid="preview-game-ludo">
-          <div class="game-card-img" style="background-image:url('https://images.pexels.com/photos/11646952/pexels-photo-11646952.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940')">
-            <span class="game-tag">Featured</span>
-          </div>
-          <div class="game-card-body">
-            <div class="game-card-info">
-              <h3>Ludo Royale</h3>
-              <span>1v1 · 4-player · Tournaments</span>
-            </div>
-            <div class="game-fee">₹10 – ₹5k</div>
-          </div>
-        </a>
-        <a href="snake-ladder.html" class="game-card" data-testid="preview-game-snake">
-          <div class="game-card-img" style="background-image:url('https://images.pexels.com/photos/20152634/pexels-photo-20152634.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940')">
-            <span class="game-tag">Hot</span>
-          </div>
-          <div class="game-card-body">
-            <div class="game-card-info">
-              <h3>Snake &amp; Ladder</h3>
-              <span>Skill-boost · Fast rounds</span>
-            </div>
-            <div class="game-fee">₹5 – ₹2k</div>
-          </div>
-        </a>
+      <div class="lobby-grid" id="lobby-grid">
+        <!-- populated by JS from winzo_games / defaults -->
       </div>
     </div>
   </section>
@@ -151,12 +130,50 @@
     </div>
   </footer>
 
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/main.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="js/env.js"></script>
+  <script defer src="js/supabase-config.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/main.js"></script>
+  <script>
+    // ── Render lobby from winzo_games (admin-managed) ──
+    const GAME_ICONS = {
+      "Full Game": "ph-crown", "1 Goti": "ph-circle", "2 Goti": "ph-circles-three",
+      "3 Goti": "ph-dots-three-circle", "Ulta": "ph-arrows-counter-clockwise",
+      "1 Six": "ph-dice-six", "Snake & Ladder": "ph-path"
+    };
+    const DEFAULT_GAMES = [
+      { id:"g1", name:"Full Game",      status:"active" },
+      { id:"g2", name:"1 Goti",         status:"active" },
+      { id:"g3", name:"2 Goti",         status:"active" },
+      { id:"g4", name:"3 Goti",         status:"active" },
+      { id:"g5", name:"Ulta",           status:"active" },
+      { id:"g6", name:"1 Six",          status:"active" },
+      { id:"g7", name:"Snake & Ladder", status:"active" },
+    ];
+    (function renderLobby() {
+      const games = (function(){ try { return JSON.parse(localStorage.getItem("winzo_games") || "null") || DEFAULT_GAMES; } catch(e){ return DEFAULT_GAMES; } })();
+      const grid = document.getElementById("lobby-grid");
+      grid.innerHTML = games.filter(g => g.status === "active").map(g => {
+        const icon = GAME_ICONS[g.name] || "ph-game-controller";
+        return `<a href="dashboard.html" class="lobby-card">
+          <div class="lobby-icon"><i class="ph-fill ${icon}"></i></div>
+          <div class="lobby-info"><h3>${g.name}</h3><span>Entry: ₹${Number(g.entry||0).toLocaleString("en-IN")} · Prize: ₹${Number(g.prize||0).toLocaleString("en-IN")}</span></div>
+        </a>`;
+      }).join("");
+    })();
+
+    // Guard lobby cards: redirect unverified users to pending page
+    document.getElementById("lobby-grid").addEventListener("click", (e) => {
+      const card = e.target.closest(".lobby-card");
+      if (!card) return;
+      e.preventDefault();
+      const session = window.WinzoAuth.session();
+      if (!session) { window.location.href = "login.html"; return; }
+      const users = window.WinzoAuth.getUsers();
+      const fresh = users.find(u => u.uid === session.uid);
+      if (!fresh || !fresh.kycVerified) { window.location.href = "pending.html"; return; }
+      window.location.href = card.getAttribute("href") || "dashboard.html";
+    });  </script>
 </body>
 </html>

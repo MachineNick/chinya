@@ -68,14 +68,25 @@
         </div>
 
         <div class="field">
-          <label>Upload Document</label>
+          <label>Front Side of Document</label>
           <label class="file-drop" for="kycFile" id="kyc-drop" data-testid="signup-kyc-upload">
-            <i class="ph ph-cloud-arrow-up"></i>
-            <p><strong>Click to upload</strong> or drag &amp; drop</p>
+            <i class="ph ph-identification-card"></i>
+            <p><strong>Click to upload front</strong> or drag &amp; drop</p>
             <p class="hint">JPG, PNG or PDF · Max 5 MB · Encrypted &amp; stored securely</p>
             <input id="kycFile" name="kycFile" type="file" accept=".jpg,.jpeg,.png,.pdf" required />
           </label>
           <div id="kyc-file-info" class="file-info" data-testid="kyc-file-info"></div>
+        </div>
+
+        <div class="field" id="kyc-back-field" style="display:none;">
+          <label>Back Side of Document</label>
+          <label class="file-drop" for="kycBackFile" id="kyc-back-drop">
+            <i class="ph ph-identification-card-reverse"></i>
+            <p><strong>Click to upload back</strong> or drag &amp; drop</p>
+            <p class="hint">JPG, PNG or PDF · Max 5 MB</p>
+            <input id="kycBackFile" name="kycBackFile" type="file" accept=".jpg,.jpeg,.png,.pdf" />
+          </label>
+          <div id="kyc-back-file-info" class="file-info"></div>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block btn-lg" data-testid="signup-submit-btn">
@@ -89,11 +100,9 @@
     </section>
   </main>
 
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/env.js"></script>
+  <script src="js/supabase-config.js"></script>
   <script src="js/auth.js"></script>
   <script>
     window.WinzoAuth.redirectIfAuthed();
@@ -103,41 +112,46 @@
     const drop = document.getElementById("kyc-drop");
     const fileInput = document.getElementById("kycFile");
     const fileInfo = document.getElementById("kyc-file-info");
+    const backDrop = document.getElementById("kyc-back-drop");
+    const backInput = document.getElementById("kycBackFile");
+    const backInfo = document.getElementById("kyc-back-file-info");
+    const backField = document.getElementById("kyc-back-field");
 
-    ["dragenter","dragover"].forEach(ev =>
-      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("dragover"); })
-    );
-    ["dragleave","drop"].forEach(ev =>
-      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("dragover"); })
-    );
-    drop.addEventListener("drop", e => {
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        fileInput.files = e.dataTransfer.files;
-        showFile(fileInput.files[0]);
-      }
+    // Show/hide back-side field based on doc type
+    const NEEDS_BACK = ["aadhaar","dl","passport"];
+    document.getElementById("kycType").addEventListener("change", function() {
+      backField.style.display = NEEDS_BACK.includes(this.value) ? "" : "none";
+      backInput.required = NEEDS_BACK.includes(this.value);
     });
-    fileInput.addEventListener("change", () => {
-      if (fileInput.files[0]) showFile(fileInput.files[0]);
-    });
-    function showFile(f) {
-      const sizeMB = (f.size / (1024*1024)).toFixed(2);
-      fileInfo.textContent = `✓ ${f.name} (${sizeMB} MB) ready to upload`;
+
+    function setupDrop(dropEl, inputEl, infoEl) {
+      ["dragenter","dragover"].forEach(ev =>
+        dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add("dragover"); })
+      );
+      ["dragleave","drop"].forEach(ev =>
+        dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove("dragover"); })
+      );
+      dropEl.addEventListener("drop", e => {
+        if (e.dataTransfer.files[0]) { inputEl.files = e.dataTransfer.files; showFile(e.dataTransfer.files[0], infoEl); }
+      });
+      inputEl.addEventListener("change", () => { if (inputEl.files[0]) showFile(inputEl.files[0], infoEl); });
     }
+    function showFile(f, infoEl) {
+      infoEl.textContent = `✓ ${f.name} (${(f.size/(1024*1024)).toFixed(2)} MB) ready to upload`;
+    }
+    setupDrop(drop, fileInput, fileInfo);
+    setupDrop(backDrop, backInput, backInfo);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       errBox.style.display = "none";
       const file = fileInput.files[0];
-      if (!file) {
-        errBox.textContent = "Please upload a KYC document.";
-        errBox.style.display = "block";
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        errBox.textContent = "File must be under 5 MB.";
-        errBox.style.display = "block";
-        return;
-      }
+      const backFile = backInput.files[0];
+      const kycType = form.kycType.value;
+      if (!file) { errBox.textContent = "Please upload the front side of your document."; errBox.style.display = "block"; return; }
+      if (file.size > 5*1024*1024) { errBox.textContent = "Front file must be under 5 MB."; errBox.style.display = "block"; return; }
+      if (NEEDS_BACK.includes(kycType) && !backFile) { errBox.textContent = "Please upload the back side of your document."; errBox.style.display = "block"; return; }
+      if (backFile && backFile.size > 5*1024*1024) { errBox.textContent = "Back file must be under 5 MB."; errBox.style.display = "block"; return; }
       const btn = form.querySelector('button[type="submit"]');
       btn.disabled = true;
       btn.innerHTML = '<i class="ph ph-spinner"></i> Creating account…';
@@ -147,8 +161,9 @@
           phone: form.phone.value.trim(),
           email: form.email.value.trim(),
           password: form.password.value,
-          kycType: form.kycType.value,
-          kycFile: file
+          kycType,
+          kycFile: file,
+          kycBackFile: backFile || null
         });
         window.WinzoAuth.toast("Account created! Welcome ₹500 bonus added.", "success");
         setTimeout(() => window.location.href = "dashboard.html", 700);

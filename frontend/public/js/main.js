@@ -2,6 +2,13 @@
 // WinzoIndia - Shared UI helpers
 // ==========================================================
 
+// Load settings from Supabase on every page
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.WinzoSettings && window.WinzoSettings.load) {
+    window.WinzoSettings.load();
+  }
+});
+
 // Populate the nav profile chip if logged in
 document.addEventListener("DOMContentLoaded", () => {
   const s = window.WinzoAuth && window.WinzoAuth.session();
