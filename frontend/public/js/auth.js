@@ -66,14 +66,24 @@ function wzToast(msg, type = "info", ms = 3200) {
   node._t = setTimeout(() => node.classList.remove("show"), ms);
 }
 
-async function wzUploadKycFile(file, uid) {
-  try {
-    const form = new FormData();
-    form.append("uid", uid);
-    form.append("file", file);
-    const res = await fetch((window.WINZO_ENV?.BACKEND_URL || "http://localhost:8001") + "/api/kyc/upload", { method: "POST", body: form });
-    if (res.ok) return await res.json(); // { kycUrl, kycKey }
-  } catch (e) { /* fall through */ }
+async function wzUploadKycFile(file, uid, token) {
+  if (window.WINZO_SB && token) {
+    try {
+      const fnUrl = window.WINZO_ENV?.SUPABASE_URL + "/functions/v1/kyc-upload";
+      // 1. Get presigned URL from Edge Function
+      const res = await fetch(fnUrl, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type })
+      });
+      if (res.ok) {
+        const { uploadUrl, publicUrl, kycKey } = await res.json();
+        // 2. Upload directly to Storj
+        await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+        return { kycUrl: publicUrl, kycKey };
+      }
+    } catch (e) { console.warn("Storj upload failed:", e.message); }
+  }
   // Fallback: base64
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -99,11 +109,9 @@ async function wzSignup(payload) {
   }
 
   let uid = "u_" + Date.now();
-  const kycResult = payload.kycFile
-    ? await wzUploadKycFile(payload.kycFile, uid)
-    : { kycUrl: null, kycKey: null };
+  let sbToken = null;
 
-  // ── Supabase Auth ──
+  // ── Supabase Auth FIRST so we have real uid + token for KYC upload ──
   if (window.WINZO_SB) {
     try {
       const { data, error } = await window.WINZO_SB.auth.signUp({
@@ -112,12 +120,19 @@ async function wzSignup(payload) {
         options: { data: { fullName: payload.fullName, phone: payload.phone } }
       });
       if (error) throw new Error(error.message);
-      // Use Supabase's UUID as uid so RLS auth.uid() = uid check passes
       if (data?.user?.id) uid = data.user.id;
+      sbToken = data?.session?.access_token || null;
     } catch (e) {
       throw new Error(e.message);
     }
   }
+
+  const kycResult = payload.kycFile
+    ? await wzUploadKycFile(payload.kycFile, uid, sbToken)
+    : { kycUrl: null, kycKey: null };
+  const kycBackResult = payload.kycBackFile
+    ? await wzUploadKycFile(payload.kycBackFile, uid, sbToken)
+    : { kycUrl: null, kycKey: null };
 
   const user = {
     uid,
@@ -127,6 +142,8 @@ async function wzSignup(payload) {
     kycType: payload.kycType,
     kycUrl: kycResult.kycUrl,
     kycKey: kycResult.kycKey,
+    kycBackUrl: kycBackResult.kycUrl,
+    kycBackKey: kycBackResult.kycKey,
     kycVerified: false,
     chips: 0,
     wallet: 0,
@@ -139,7 +156,9 @@ async function wzSignup(payload) {
       await window.WINZO_SB.from("users").insert({
         uid, full_name: payload.fullName, phone: payload.phone,
         email: payload.email, kyc_type: payload.kycType,
-        kyc_url: kycResult.kycUrl, kyc_verified: false,
+        kyc_url: kycResult.kycUrl, kyc_back_url: kycBackResult.kycUrl,
+        kyc_back_key: kycBackResult.kycKey,
+        kyc_verified: false,
         chips: 0, created_at: new Date().toISOString()
       });
     } catch(e) { console.warn("Supabase DB insert failed:", e.message); }
@@ -166,22 +185,25 @@ async function wzLogin(identifier, password) {
       if (data?.session) {
         localStorage.setItem("winzo_sb_session", JSON.stringify(data.session));
       }
-      // Sync fresh user data from Supabase DB
-      const { data: dbUser } = await window.WINZO_SB.from("users").select("*").eq("email", identifier).single();
-      if (dbUser) {
-        const users = wzGetUsers();
-        const idx = users.findIndex(u => u.email === identifier);
-        const merged = {
-          uid: dbUser.uid, fullName: dbUser.full_name, phone: dbUser.phone,
-          email: dbUser.email, kycType: dbUser.kyc_type, kycUrl: dbUser.kyc_url,
-          kycVerified: dbUser.kyc_verified, chips: dbUser.chips || 0,
-          wallet: dbUser.chips || 0, createdAt: dbUser.created_at
-        };
-        if (idx >= 0) users[idx] = merged; else users.push(merged);
-        wzSaveUsers(users);
-        wzSetSession({ ...merged, password: undefined });
-        return merged;
-      }
+      // Sync fresh user data from Supabase DB (query by uid so RLS passes)
+      const { data: dbUser } = await window.WINZO_SB.from("users").select("*").eq("uid", data.user.id).single();
+      const merged = dbUser ? {
+        uid: dbUser.uid, fullName: dbUser.full_name, phone: dbUser.phone,
+        email: dbUser.email, kycType: dbUser.kyc_type, kycUrl: dbUser.kyc_url,
+        kycBackUrl: dbUser.kyc_back_url || null, kycBackKey: dbUser.kyc_back_key || null,
+        kycVerified: dbUser.kyc_verified, chips: dbUser.chips || 0,
+        wallet: dbUser.chips || 0, createdAt: dbUser.created_at
+      } : {
+        uid: data.user.id, fullName: data.user.user_metadata?.fullName || identifier,
+        phone: data.user.user_metadata?.phone || "", email: data.user.email || identifier,
+        kycVerified: false, chips: 0, wallet: 0, createdAt: data.user.created_at
+      };
+      const users = wzGetUsers();
+      const idx = users.findIndex(u => u.uid === merged.uid || u.email === merged.email);
+      if (idx >= 0) users[idx] = merged; else users.push(merged);
+      wzSaveUsers(users);
+      wzSetSession({ ...merged, password: undefined });
+      return merged;
     } catch (e) {
       // Fall through to localStorage
       console.warn("Supabase login failed, trying local:", e.message);
@@ -242,13 +264,13 @@ function wzGetSettings() {
   try {
     const s = JSON.parse(localStorage.getItem(WZ_SETTINGS_KEY) || "{}");
     return {
-      bonusPhone: s.bonusPhone || "+91 99999 99999",
+      bonusPhone: s.bonusPhone || "+91 95186-85134",
       adminUser:  s.adminUser  || "admin",
       adminPass:  s.adminPass  || "winzo-admin-2026",
       upiId:      s.upiId      || "winzoindia@upi",
       upiName:    s.upiName    || "WinzoIndia"
     };
-  } catch { return { bonusPhone: "+91 99999 99999", adminUser: "admin", adminPass: "winzo-admin-2026", upiId: "winzoindia@upi", upiName: "WinzoIndia" }; }
+  } catch { return { bonusPhone: "+91 95186-85134", adminUser: "admin", adminPass: "winzo-admin-2026", upiId: "winzoindia@upi", upiName: "WinzoIndia" }; }
 }
 async function wzLoadSettingsFromSupabase() {
   if (!window.WINZO_SB) return;
@@ -278,7 +300,7 @@ async function wzGetSetsAsync() {
     try {
       const { data } = await window.WINZO_SB.from("challenges").select("*").order("at", { ascending: false });
       if (data) {
-        const remote = data.map(r => ({ id:r.id, gameId:r.game_id, uid:r.uid, byName:r.by_name, value:r.value, gameType:r.game_type, acceptedBy:r.accepted_by, acceptedByName:r.accepted_by_name, acceptedAt:r.accepted_at, roomCode:r.room_code, at:r.at }));
+        const remote = data.map(r => ({ id:r.id, gameId:r.game_id, uid:r.uid, byName:r.by_name, value:r.value, gameType:r.game_type, acceptedBy:r.accepted_by, acceptedByName:r.accepted_by_name, acceptedAt:r.accepted_at, roomCode:r.room_code, startedAt:r.started_at||null, at:r.at }));
         const local = wzGetSets();
         const localMap = new Map(local.map(s => [s.id, s]));
         // For each remote entry, prefer local version if local has newer info (acceptedBy, roomCode set locally but not yet in Supabase)
@@ -291,6 +313,7 @@ async function wzGetSetsAsync() {
             acceptedByName: r.acceptedByName || loc.acceptedByName || null,
             acceptedAt: r.acceptedAt || loc.acceptedAt || null,
             roomCode: r.roomCode || loc.roomCode || null,
+            startedAt: r.startedAt || loc.startedAt || null,
           };
         });
         // Add local-only entries not yet in Supabase
@@ -309,7 +332,7 @@ function wzGetSets() {
 async function wzSaveSetsAsync(arr) {
   localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr));
   if (!window.WINZO_SB) return;
-  // Upsert all
+  // Only upsert entries that are new or changed (avoid full-table write on every poll)
   try {
     const rows = arr.map(s => ({ id:s.id, game_id:s.gameId||null, uid:s.uid, by_name:s.byName, value:s.value, game_type:s.gameType, accepted_by:s.acceptedBy||null, accepted_by_name:s.acceptedByName||null, accepted_at:s.acceptedAt||null, room_code:s.roomCode||null, at:s.at }));
     await window.WINZO_SB.from("challenges").upsert(rows);
@@ -325,7 +348,16 @@ async function wzDeleteSet(id) {
   if (!window.WINZO_SB) return;
   try { await window.WINZO_SB.from("challenges").delete().eq("id", id); } catch(e) { console.warn("Supabase set delete failed:", e.message); }
 }
-window.WinzoSets = { get: wzGetSets, getAsync: wzGetSetsAsync, save: wzSaveSets, delete: wzDeleteSet };
+window.WinzoSets = { get: wzGetSets, getAsync: wzGetSetsAsync, save: wzSaveSets, delete: wzDeleteSet,
+  saveOne: async function(s) {
+    const arr = wzGetSets();
+    const idx = arr.findIndex(x => x.id === s.id);
+    if (idx >= 0) arr[idx] = s; else arr.push(s);
+    localStorage.setItem(WZ_SETS_KEY, JSON.stringify(arr));
+    if (!window.WINZO_SB) return;
+    try { await window.WINZO_SB.from("challenges").upsert({ id:s.id, game_id:s.gameId||null, uid:s.uid, by_name:s.byName, value:s.value, game_type:s.gameType, accepted_by:s.acceptedBy||null, accepted_by_name:s.acceptedByName||null, accepted_at:s.acceptedAt||null, room_code:s.roomCode||null, at:s.at }); } catch(e) { console.warn("Supabase set saveOne failed:", e.message); }
+  }
+};
 
 // ---- Deposits (Supabase + localStorage) ----
 async function wzSaveDepositAsync(dep) {
@@ -340,7 +372,24 @@ window.WinzoDeposits = { saveOne: wzSaveDepositAsync };
 async function wzSaveResultAsync(res) {
   if (!window.WINZO_SB) return;
   try {
-    await window.WINZO_SB.from("results").upsert({ id:res.id, challenge_id:res.challengeId, game_id:res.gameId||null, submitter_uid:res.submitterUid, submitter_name:res.submitterName, submitter_phone:res.submitterPhone, opponent_uid:res.opponentUid, opponent_name:res.opponentName, opponent_phone:res.opponentPhone, game_type:res.gameType, amount:res.amount, room_code:res.roomCode, result:res.result, proof_url:res.proofUrl, status:res.status });
+    await window.WINZO_SB.from("results").upsert({
+      id: res.id,
+      challenge_id: res.challengeId,
+      game_id: res.gameId || null,
+      submitter_uid: res.submitterUid,
+      submitter_name: res.submitterName,
+      submitter_phone: res.submitterPhone,
+      opponent_uid: res.opponentUid,
+      opponent_name: res.opponentName,
+      opponent_phone: res.opponentPhone,
+      game_type: res.gameType,
+      amount: res.amount,
+      room_code: res.roomCode,
+      result: res.result,
+      proof_url: res.proofUrl,
+      screenshot_at: res.screenshotAt || null,
+      status: res.status
+    });
   } catch(e) { console.warn("Supabase result save failed:", e.message); }
 }
 window.WinzoResults = { saveOne: wzSaveResultAsync };

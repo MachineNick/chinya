@@ -28,6 +28,7 @@
         <li><a href="#features">Why Winzo</a></li>
         <li><a href="dashboard.html">Play</a></li>
       </ul>
+      <a href="https://wa.me/919812543183" target="_blank" rel="noopener" class="wz-helpline" title="WhatsApp Helpline"><i class="ph-fill ph-whatsapp-logo"></i><span> +91-9812543183</span></a>
       <div class="nav-actions" id="nav-auth">
         <a href="login.html" class="btn btn-secondary" data-testid="nav-login-btn">Sign in</a>
         <a href="signup.html" class="btn btn-primary" data-testid="nav-signup-btn">Get started</a>
@@ -166,14 +167,13 @@
     document.getElementById("lobby-grid").addEventListener("click", (e) => {
       const card = e.target.closest(".lobby-card");
       if (!card) return;
-        const session = window.WinzoAuth.session();
-        if (!session) return; // let href go to dashboard which will redirect to login
-        const users = window.WinzoAuth.getUsers();
-        const fresh = users.find(u => u.uid === session.uid);
-        if (!fresh || !fresh.kycVerified) {
-          e.preventDefault();
-          window.location.href = "pending.html";
-        }
+      e.preventDefault();
+      const session = window.WinzoAuth.session();
+      if (!session) { window.location.href = "login.html"; return; }
+      const users = window.WinzoAuth.getUsers();
+      const fresh = users.find(u => u.uid === session.uid);
+      if (!fresh || !fresh.kycVerified) { window.location.href = "pending.html"; return; }
+      window.location.href = card.getAttribute("href") || "dashboard.html";
     });  </script>
 </body>
 </html>

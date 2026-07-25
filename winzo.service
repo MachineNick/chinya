@@ -1,0 +1,13 @@
+[Unit]
+Description=WinzoIndia FastAPI backend
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/var/www/winzo/backend
+EnvironmentFile=/var/www/winzo/.env
+ExecStart=/var/www/winzo/backend/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

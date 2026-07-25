@@ -14,12 +14,66 @@ ${sets.length ? sets.slice().reverse().map(function(s,i){return `<tr><td>${i+1}<
 };
 
 PANELS["running-challenges"] = function() {
-  const sets = getLiveSets().filter(function(s){return !s.acceptedBy;});
-  return `<div class="a2-panel-head"><h2><i class="ph ph-spinner-gap"></i> Running Challenges</h2><span class="badge badge-blue">${sets.length} Open</span></div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Player</th><th>Game</th><th>Value</th><th>Time</th><th>Action</th></tr></thead><tbody>
-${sets.length ? sets.map(function(s,i){return `<tr><td>${i+1}</td><td><strong>${s.byName||"—"}</strong></td><td>${s.gameType||"—"}</td><td style="color:var(--accent);font-weight:700">₹${Number(s.value||0).toLocaleString("en-IN")}</td><td>${s.createdAt||"—"}</td>
-<td><button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="adminDeleteSet('${s.id}')"><i class="ph ph-x-circle"></i> Cancel</button></td></tr>`;}).join("") : emptyRow(6,"No open challenges.")}
-</tbody></table></div>`;
+  var sets = getLiveSets();
+  var users = getLiveUsers();
+  var matched = sets.filter(function(s){ return s.acceptedBy && !s.startedAt; });
+  var started = sets.filter(function(s){ return s.acceptedBy && s.startedAt; });
+  var open    = sets.filter(function(s){ return !s.acceptedBy; });
+  function phoneOf(uid) {
+    var u = users.find(function(x){ return x.uid === uid; });
+    return u ? (u.phone||"—") : "—";
+  }
+  function fmt(ts) { return ts ? new Date(ts).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—"; }
+  function matchedRows(arr, showStarted) {
+    return arr.map(function(s,i){
+      return "<tr>"
+        + "<td>"+(i+1)+"</td>"
+        + "<td><strong>"+(s.byName||"—")+"</strong><br/><span style='font-size:11px;color:var(--text-muted);'>"+phoneOf(s.uid)+"</span></td>"
+        + "<td><strong>"+(s.acceptedByName||"—")+"</strong><br/><span style='font-size:11px;color:var(--text-muted);'>"+phoneOf(s.acceptedBy)+"</span></td>"
+        + "<td>"+(s.gameType||"—")+"</td>"
+        + "<td style='color:var(--accent);font-weight:700'>₹"+Number(s.value||0).toLocaleString("en-IN")+"</td>"
+        + "<td style='font-size:12px;'>"+(s.roomCode||"—")+"</td>"
+        + "<td style='font-size:11px;'>"+fmt(s.acceptedAt)+"</td>"
+        + (showStarted ? "<td style='font-size:11px;color:#4ade80;'>"+fmt(s.startedAt)+"</td>" : "")
+        + "<td><button class='btn btn-secondary' style='padding:5px 10px;font-size:11px;' onclick=\"adminDeleteSet('"+s.id+"')\"><i class='ph ph-x-circle'></i> Cancel</button></td>"
+        + "</tr>";
+    }).join("");
+  }
+  function openRows(arr) {
+    return arr.map(function(s,i){
+      return "<tr>"
+        + "<td>"+(i+1)+"</td>"
+        + "<td><strong>"+(s.byName||"—")+"</strong><br/><span style='font-size:11px;color:var(--text-muted);'>"+phoneOf(s.uid)+"</span></td>"
+        + "<td>—</td><td>"+(s.gameType||"—")+"</td>"
+        + "<td style='color:var(--accent);font-weight:700'>₹"+Number(s.value||0).toLocaleString("en-IN")+"</td>"
+        + "<td>—</td><td style='font-size:11px;'>"+fmt(s.at)+"</td>"
+        + "<td><button class='btn btn-secondary' style='padding:5px 10px;font-size:11px;' onclick=\"adminDeleteSet('"+s.id+"')\"><i class='ph ph-x-circle'></i> Cancel</button></td>"
+        + "</tr>";
+    }).join("");
+  }
+  var html = "<div class='a2-panel-head'><h2><i class='ph ph-spinner-gap'></i> Running Challenges</h2>"
+    + "<span class='badge badge-green'>"+started.length+" Started</span> "
+    + "<span class='badge badge-blue'>"+matched.length+" Matched</span> "
+    + "<span class='badge badge-yellow'>"+open.length+" Open</span></div>";
+  if (started.length) {
+    html += "<div style='margin-bottom:8px;font-weight:700;color:#4ade80;'><i class='ph-fill ph-play-circle'></i> Games In Progress ("+started.length+")</div>"
+      + "<div class='a2-table-wrap' style='margin-bottom:24px;'><table class='a2-table'><thead><tr><th>#</th><th>Setter</th><th>Acceptor</th><th>Game</th><th>Amount</th><th>Room Code</th><th>Matched At</th><th>Started At</th><th>Action</th></tr></thead><tbody>"
+      + matchedRows(started, true) + "</tbody></table></div>";
+  }
+  if (matched.length) {
+    html += "<div style='margin-bottom:8px;font-weight:700;color:#60a5fa;'><i class='ph-fill ph-handshake'></i> Matched — Not Yet Started ("+matched.length+")</div>"
+      + "<div class='a2-table-wrap' style='margin-bottom:24px;'><table class='a2-table'><thead><tr><th>#</th><th>Setter</th><th>Acceptor</th><th>Game</th><th>Amount</th><th>Room Code</th><th>Matched At</th><th>Action</th></tr></thead><tbody>"
+      + matchedRows(matched, false) + "</tbody></table></div>";
+  }
+  if (open.length) {
+    html += "<div style='margin-bottom:8px;font-weight:700;color:var(--text-muted);'><i class='ph ph-hourglass'></i> Open — Waiting for Opponent ("+open.length+")</div>"
+      + "<div class='a2-table-wrap'><table class='a2-table'><thead><tr><th>#</th><th>Setter</th><th>Acceptor</th><th>Game</th><th>Amount</th><th>Room Code</th><th>Posted At</th><th>Action</th></tr></thead><tbody>"
+      + openRows(open) + "</tbody></table></div>";
+  }
+  if (!started.length && !matched.length && !open.length) {
+    html += "<p style='color:var(--text-muted);padding:24px;text-align:center;'>No challenges found.</p>";
+  }
+  return html;
 };
 
 PANELS["search-challenges"] = function() {
@@ -35,30 +89,30 @@ ${sets.length ? sets.slice().reverse().map(function(s,i){return `<tr><td>${i+1}<
 };
 
 PANELS["search-screenshots"] = function() {
-  const results = (function(){ try { return JSON.parse(localStorage.getItem("winzo_results") || "[]"); } catch(e){ return []; } })();
-  const reports = getLiveReports();
-  const all = results.concat(reports.map(function(r){ return { _type:"report", submitterName:r.reporterName, submitterPhone:"—", opponentName:r.opponent, opponentPhone:"—", gameType:"—", amount:"—", result:"report", proofUrl:r.proofUrl, status:r.status, at:r.at||"—" }; }));
-  return `<div class="a2-panel-head"><h2><i class="ph ph-image-square"></i> Search Screenshots</h2></div>
-<div class="a2-search">
-  <input type="text" placeholder="Search by player or opponent..." oninput="filterTable(this,'ss-tbody',1,3)" />
-</div>
-<div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Game ID</th><th>Player</th><th>Phone</th><th>Opponent</th><th>Opp. Phone</th><th>Game</th><th>Amount</th><th>Result</th><th>Screenshot</th><th>Status</th><th>Time</th></tr></thead>
-<tbody id="ss-tbody">
-${all.length ? all.map(function(r,i){ return `<tr>
-  <td>${i+1}</td>
-  <td style="font-family:monospace;font-size:12px;color:var(--accent);">${r.gameId||"—"}</td>
-  <td><strong>${r.submitterName||"—"}</strong></td>
-  <td>${r.submitterPhone||"—"}</td>
-  <td>${r.opponentName||"—"}</td>
-  <td>${r.opponentPhone||"—"}</td>
-  <td>${r.gameType||"—"}</td>
-  <td>${r.amount && r.amount!=="—" ? rupee(r.amount) : "—"}</td>
-  <td>${statusBadge(r.result||"pending")}</td>
-  <td>${r.proofUrl ? `<a href="${r.proofUrl}" target="_blank"><img src="${r.proofUrl}" style="width:48px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;" /></a>` : "—"}</td>
-  <td>${statusBadge(r.status||"pending")}</td>
-  <td style="font-size:11px;color:var(--text-muted);">${r.at||"—"}</td>
-</tr>`;}).join("") : emptyRow(12,"No screenshots submitted yet.")}
-</tbody></table></div>`;
+  var results = getLiveResults();
+  var reports = getLiveReports();
+  var all = results.concat(reports.map(function(r){ return { _type:"report", submitterName:r.reporterName, submitterPhone:"—", opponentName:r.opponent, opponentPhone:"—", gameType:"—", amount:"—", result:"report", proofUrl:r.proofUrl, screenshotAt:r.screenshotAt||null, status:r.status, at:r.at||"—" }; }));
+  var rows = all.map(function(r,i){
+    var thumb = r.proofUrl ? "<a href=\""+r.proofUrl+"\" target=\"_blank\"><img src=\""+r.proofUrl+"\" style=\"width:48px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;\" /></a>" : "—";
+    return "<tr>"
+      + "<td>"+(i+1)+"</td>"
+      + "<td style=\"font-family:monospace;font-size:12px;color:var(--accent);\">"+(r.gameId||"—")+"</td>"
+      + "<td><strong>"+(r.submitterName||"—")+"</strong></td>"
+      + "<td>"+(r.submitterPhone||"—")+"</td>"
+      + "<td>"+(r.opponentName||"—")+"</td>"
+      + "<td>"+(r.opponentPhone||"—")+"</td>"
+      + "<td>"+(r.gameType||"—")+"</td>"
+      + "<td>"+(r.amount && r.amount!=="—" ? rupee(r.amount) : "—")+"</td>"
+      + "<td>"+statusBadge(r.result||"pending")+"</td>"
+      + "<td>"+thumb+"</td>"
+      + "<td style=\"font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap;\">"+(r.screenshotAt||r.at||"—")+"</td>"
+      + "<td>"+statusBadge(r.status||"pending")+"</td>"
+      + "</tr>";
+  }).join("");
+  return "<div class=\"a2-panel-head\"><h2><i class=\"ph ph-image-square\"></i> Search Screenshots</h2></div>"
+    + "<div class=\"a2-search\"><input type=\"text\" placeholder=\"Search by player or opponent...\" oninput=\"filterTable(this,'ss-tbody',2,4)\" /></div>"
+    + "<div class=\"a2-table-wrap\"><table class=\"a2-table\"><thead><tr><th>#</th><th>Game ID</th><th>Player</th><th>Phone</th><th>Opponent</th><th>Opp. Phone</th><th>Game</th><th>Amount</th><th>Result</th><th>Screenshot</th><th>Screenshot Time</th><th>Status</th></tr></thead>"
+    + "<tbody id=\"ss-tbody\">"+(all.length ? rows : emptyRow(12,"No screenshots submitted yet."))+"</tbody></table></div>";
 };
 
 PANELS["all-challenges"] = function() {

@@ -24,6 +24,7 @@
         <li><a href="snake-ladder.html">Snake &amp; Ladder</a></li>
         <li><a href="profile.html">Profile</a></li>
       </ul>
+      <a href="https://wa.me/919812543183" target="_blank" rel="noopener" class="wz-helpline" title="WhatsApp Helpline"><i class="ph-fill ph-whatsapp-logo"></i><span> +91-9812543183</span></a>
       <div class="nav-actions">
         <a href="profile.html" class="btn btn-secondary" data-testid="nav-profile-link">
           <i class="ph ph-user-circle"></i> <span data-user-name>Player</span>
@@ -41,9 +42,9 @@
       <p class="bonus-line" data-testid="bonus-contact">
         <i class="ph-fill ph-phone-call"></i>
         Bonus add karwane ke lie contact kare
-        <a id="bonus-phone-link" href="#" class="bonus-phone" data-testid="bonus-phone">+91 99999 99999</a>
+        <a id="bonus-phone-link" href="#" class="bonus-phone" data-testid="bonus-phone">+91 95186-85134</a>
       </p>
-      <button class="btn btn-primary" id="open-upi" data-testid="open-upi-btn" style="margin-top:14px;" onclick="document.getElementById('upi-modal').removeAttribute('hidden');document.getElementById('upi-phone-display').textContent=(window.WinzoSettings?window.WinzoSettings.get().bonusPhone:'+91 99999 99999')">
+      <button class="btn btn-primary" id="open-upi" data-testid="open-upi-btn" style="margin-top:14px;" onclick="document.getElementById('upi-modal').removeAttribute('hidden');document.getElementById('upi-phone-display').textContent=(window.WinzoSettings?window.WinzoSettings.get().bonusPhone:'+91 95186-85134')">
         <i class="ph-fill ph-qr-code"></i> Pay via UPI &amp; Add Chips
       </button>
     </div>
@@ -71,7 +72,7 @@
       <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px;">
         <div>
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Pay to this number</div>
-          <div id="upi-phone-display" style="font-size:1.1rem;font-weight:700;color:var(--accent);letter-spacing:1px;">+91 99999 99999</div>
+          <div id="upi-phone-display" style="font-size:1.1rem;font-weight:700;color:var(--accent);letter-spacing:1px;">+91 95186-85134</div>
         </div>
         <button onclick="navigator.clipboard.writeText(document.getElementById('upi-phone-display').textContent).then(()=>window.WinzoAuth.toast('Number copied!','success'))" class="btn btn-secondary" style="padding:8px 14px;font-size:12px;white-space:nowrap;">
           <i class="ph ph-copy"></i> Copy
@@ -289,11 +290,11 @@
 
   <footer class="footer"><div class="container"><p><strong>WinzoIndia</strong> · Play responsibly. 18+ only.</p></div></footer>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="js/env.js"></script>
-  <script defer src="js/supabase-config.js"></script>
-  <script defer src="js/auth.js"></script>
-  <script defer src="js/main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/env.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
   <script>
     const session = window.WinzoAuth.requireAuth();
     if (!session) throw new Error("not authed");
@@ -328,7 +329,7 @@
       _paintSets(arr);
       _paintMatchRoom(arr);
     });
-    setInterval(refreshView, 10000);
+    setInterval(refreshView, 30000);
 
     // Single shared poll — one Supabase fetch feeds both renders
     setInterval(function() {
@@ -337,7 +338,7 @@
         _paintSets(merged);
         _paintMatchRoom(merged);
       });
-    }, 3000);
+    }, 5000);
 
     var _lastSetsHash = "";
     function _paintSets(arr) {
@@ -346,15 +347,19 @@
       if (hash === _lastSetsHash) return;
       _lastSetsHash = hash;
       if (!arr.length) { listEl.innerHTML = `<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">No open challenges. Be the first to set one!</p>`; return; }
-      listEl.innerHTML = arr.slice().reverse().map((s,i) => {
-        const mine = s.uid === session.uid;
+      // Only show: open (unmatched) challenges + user's own matched challenge
+      const visible = arr.filter(s => !s.acceptedBy || s.uid === session.uid || s.acceptedBy === session.uid);
+      if (!visible.length) { listEl.innerHTML = `<p style="color:var(--text-muted);font-size:14px;text-align:center;padding:24px;">No open challenges. Be the first to set one!</p>`; return; }
+      listEl.innerHTML = visible.slice().reverse().map((s,i) => {
+        const mine = s.uid === session.uid || (!s.uid && s.byName === session.fullName.split(" ")[0]);
         const label = GAME_LABELS[s.gameType] || s.gameType;
         const action = s.acceptedBy
           ? `<div class="set-status accepted"><i class="ph-fill ph-handshake"></i> Matched with ${s.acceptedByName||"Player"}</div>`
           : mine
             ? `<button class="btn btn-secondary" onclick="cancelSet('${s.id}')"><i class="ph ph-x"></i> Cancel</button>`
             : `<button class="btn btn-primary" onclick="acceptSet('${s.id}')"><i class="ph-fill ph-sword"></i> Play</button>`;
-        return `<div class="set-row" data-testid="set-row-${i}"><div style="flex:1;font-size:15px;font-weight:600;"><span style="color:var(--accent);">${s.byName}</span> has set a challenge for <span style="color:var(--accent);">₹${Number(s.value).toLocaleString("en-IN")}</span> · <span class="set-tag" style="display:inline;">${label}</span></div><div>${action}</div></div>`;
+        const displayName = mine ? `<span style="color:var(--accent);">You</span>` : `<span style="color:var(--accent);">${s.byName}</span>`;
+        return `<div class="set-row" data-testid="set-row-${i}"><div style="flex:1;font-size:15px;font-weight:600;">${displayName} ${mine ? "set" : "has set"} a challenge for <span style="color:var(--accent);">₹${Number(s.value).toLocaleString("en-IN")}</span> · <span class="set-tag" style="display:inline;">${label}</span></div><div>${action}</div></div>`;
       }).join("");
     }
     function renderSets() {
@@ -386,7 +391,7 @@
       renderSets();
       renderMatchRoom();
       // Persist to Supabase in background
-      window.WinzoSets.save(arr);
+      window.WinzoSets.saveOne(s);
     };
 
     window.cancelSet = async function(id) {
@@ -427,7 +432,7 @@
       renderSets();
       renderMatchRoom();
       // Then persist to Supabase in background
-      window.WinzoSets.save(arr);
+      window.WinzoSets.saveOne(newSet);
     });
 
     var _lastMatchHash = "";
@@ -436,7 +441,7 @@
       const match = arr.find(s => s.acceptedBy && (s.uid === session.uid || s.acceptedBy === session.uid))
                  || arr.find(s => !s.acceptedBy && s.uid === session.uid);
       const submitted = match ? !!results.find(r => r.challengeId === match.id && r.submitterUid === session.uid) : false;
-      const hash = match ? (match.id + "|" + (match.acceptedBy||"pending") + "|" + (match.roomCode||"") + "|" + submitted) : "none";
+      const hash = match ? (match.id + "|" + (match.acceptedBy||"pending") + "|" + (match.roomCode||"") + "|" + (match.startedAt||"") + "|" + submitted) : "none";
       if (hash === _lastMatchHash) return;
       _lastMatchHash = hash;
       _renderMatchRoomWithArr(arr);
@@ -449,7 +454,7 @@
       const section = document.getElementById("match-room-section");
       const card = document.getElementById("match-room-card");
       if (!match) { section.hidden = true; return; }
-      // Pending — waiting for opponent, but show full match controls
+      // Pending — waiting for opponent, show minimal info + cancel only
       if (!match.acceptedBy) {
         const label = GAME_LABELS[match.gameType] || match.gameType;
         section.hidden = false;
@@ -462,48 +467,10 @@
               <div><div style="font-size:11px;color:var(--text-muted);">Amount</div><div style="font-weight:700;color:var(--accent);">₹${Number(match.value).toLocaleString("en-IN")}</div></div>
             </div>
           </div>
-          <div style="margin-bottom:18px;">
-            <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Share Game Code</div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <input id="room-code-input" type="text" placeholder="Enter room code to share" value="${match.roomCode||''}" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:#0F0F16;color:#fff;font-size:14px;" />
-              <button class="btn btn-primary" style="padding:8px 16px;font-size:13px;" onclick="shareRoomCode('${match.id}')"><i class="ph-fill ph-share-network"></i> Share</button>
-            </div>
-          </div>
-          <hr style="border-color:rgba(255,255,255,0.08);margin:18px 0;" />
-          <div style="margin-bottom:14px;">
-            <div style="font-weight:700;margin-bottom:10px;">Update Game Status</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="game-result" value="won" /> <span class="badge badge-green">I Won</span></label>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="game-result" value="lost" /> <span class="badge badge-red">I Lost</span></label>
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="game-result" value="cancel" /> <span class="badge badge-yellow">Cancel Game</span></label>
-            </div>
-          </div>
-          <div style="margin-bottom:14px;" id="screenshot-section">
-            <div style="font-weight:700;margin-bottom:8px;">Upload Screenshot</div>
-            <label class="file-drop" for="result-proof" style="padding:14px;">
-              <i class="ph ph-cloud-arrow-up"></i>
-              <p><strong>Click to upload</strong> your game screenshot</p>
-              <p class="hint">JPG / PNG · Max 5 MB</p>
-              <input id="result-proof" type="file" accept="image/*" />
-            </label>
-            <div id="result-proof-info" style="font-size:12px;color:var(--success);margin-top:4px;"></div>
-          </div>
-          <div style="margin-bottom:18px;">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
-              <input type="checkbox" id="room-code-verified" />
-              I have verified the room code
-            </label>
-          </div>
-          <button class="btn btn-primary btn-block" onclick="postResult('${match.id}')">
-            <i class="ph-fill ph-paper-plane-tilt"></i> Post Result
+          <p style="color:var(--text-muted);font-size:13px;margin-bottom:18px;"><i class="ph ph-clock"></i> Waiting for another player to accept your challenge…</p>
+          <button class="btn btn-secondary" onclick="cancelPendingSet('${match.id}')">
+            <i class="ph ph-x-circle"></i> Cancel Challenge
           </button>`;
-        document.getElementById("result-proof").addEventListener("change", function() {
-          const f = this.files[0];
-          if (f) document.getElementById("result-proof-info").textContent = `✓ ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`;
-        });
-        document.querySelectorAll("input[name='game-result']").forEach(r => r.addEventListener("change", function() {
-          document.getElementById("screenshot-section").style.display = this.value === "cancel" ? "none" : "";
-        }));
         return;
       }
       // Check if current user already submitted result
@@ -519,16 +486,22 @@
       const isSetter = match.uid === session.uid;
       const label = GAME_LABELS[match.gameType] || match.gameType;
       const time = new Date(match.acceptedAt).toLocaleString("en-IN", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+      const startedBadge = match.startedAt
+        ? `<div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:6px 12px;font-size:13px;color:#4ade80;"><i class="ph-fill ph-play-circle"></i> Game started at ${new Date(match.startedAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div>`
+        : "";
+      const startBtn = match.startedAt ? "" : `<button class="btn btn-primary" style="padding:8px 16px;font-size:13px;background:linear-gradient(135deg,#16a34a,#15803d);" onclick="startGame('${match.id}')"><i class="ph-fill ph-play-circle"></i> Start Game</button>`;
       const roomCodeHtml = isSetter
-        ? `<div style="display:flex;gap:8px;margin-top:8px;">
-            <input id="room-code-input" type="text" placeholder="Enter room code" value="${match.roomCode||''}" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:#0F0F16;color:#fff;font-size:14px;" />
+        ? `<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            <input id="room-code-input" type="text" placeholder="Enter room code" value="${match.roomCode||''}" style="flex:1;min-width:120px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:#0F0F16;color:#fff;font-size:14px;" />
             <button class="btn btn-primary" style="padding:8px 16px;font-size:13px;" onclick="shareRoomCode('${match.id}')"><i class="ph-fill ph-share-network"></i> Share</button>
-           </div>`
+            ${startBtn}
+           </div>${startedBadge}`
         : match.roomCode
-          ? `<div style="display:flex;align-items:center;gap:10px;margin-top:8px;background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:8px;">
+          ? `<div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:8px;">
               <span style="font-size:1.2rem;font-weight:700;color:var(--accent);letter-spacing:2px;">${match.roomCode}</span>
               <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="navigator.clipboard.writeText('${match.roomCode}').then(()=>window.WinzoAuth.toast('Code copied!','success'))"><i class="ph ph-copy"></i> Copy</button>
-             </div>`
+              ${startBtn}
+             </div>${startedBadge}`
           : `<div style="margin-top:8px;color:var(--text-muted);font-size:13px;"><i class="ph ph-hourglass"></i> Waiting for room code from ${match.byName}...</div>`;
 
       section.hidden = false;
@@ -542,6 +515,7 @@
             <div><div style="font-size:11px;color:var(--text-muted);">Game</div><div style="font-weight:700;">${label}</div></div>
             <div><div style="font-size:11px;color:var(--text-muted);">Amount</div><div style="font-weight:700;color:var(--accent);">₹${Number(match.value).toLocaleString("en-IN")}</div></div>
             <div><div style="font-size:11px;color:var(--text-muted);">Matched at</div><div style="font-weight:700;">${time}</div></div>
+            ${match.startedAt ? `<div><div style="font-size:11px;color:var(--text-muted);">Started at</div><div style="font-weight:700;color:#4ade80;">${new Date(match.startedAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div></div>` : ""}
           </div>
         </div>
         <div style="margin-bottom:18px;">
@@ -586,21 +560,80 @@
       }));
     }
 
+    window.cancelPendingSet = async function(id) {
+      const users = window.WinzoAuth.getUsers();
+      const fresh = users.find(u => u.uid === session.uid);
+      const arr = window.WinzoSets.get();
+      const s = arr.find(x => x.id === id);
+      if (s && fresh) { fresh.chips = Number(fresh.chips ?? fresh.wallet ?? 0) + s.value; fresh.wallet = fresh.chips; window.WinzoAuth.saveUsers(users); }
+      await window.WinzoSets.delete(id);
+      window.WinzoAuth.toast("Challenge cancelled. Chips refunded.", "success");
+      renderSets(); renderMatchRoom();
+    };
+
     window.shareRoomCode = async function(id) {
       const code = document.getElementById("room-code-input").value.trim();
       if (!code) return window.WinzoAuth.toast("Enter a room code first.", "error");
-      // Update localStorage immediately
       const arr = window.WinzoSets.get();
       const s = arr.find(x => x.id === id);
       if (!s) return;
       s.roomCode = code;
       localStorage.setItem("winzo_sets_global", JSON.stringify(arr));
-      // Push to Supabase directly
       if (window.WINZO_SB) {
         try { await window.WINZO_SB.from("challenges").update({ room_code: code }).eq("id", id); } catch(e) {}
       }
-      _lastMatchHash = ""; // force re-render
+      _lastMatchHash = "";
       window.WinzoAuth.toast("Room code shared!", "success");
+      renderMatchRoom();
+    };
+
+    window.startGame = async function(id) {
+      const arr = window.WinzoSets.get();
+      const s = arr.find(x => x.id === id);
+      if (!s) return;
+      if (s.startedAt) return window.WinzoAuth.toast("Game already started.", "info");
+      s.startedAt = Date.now();
+      localStorage.setItem("winzo_sets_global", JSON.stringify(arr));
+      if (window.WINZO_SB) {
+        try { await window.WINZO_SB.from("challenges").update({ started_at: new Date(s.startedAt).toISOString() }).eq("id", id); } catch(e) {}
+      }
+      const users = window.WinzoAuth.getUsers();
+      const setter = users.find(u => u.uid === s.uid);
+      const acceptor = users.find(u => u.uid === s.acceptedBy);
+      const ev = {
+        id: "gs_" + Date.now(),
+        challengeId: s.id,
+        gameId: s.gameId || s.id,
+        gameType: GAME_LABELS[s.gameType] || s.gameType,
+        amount: s.value,
+        roomCode: s.roomCode || "—",
+        setterName: s.byName,
+        setterPhone: (setter && setter.phone) || "—",
+        acceptorName: s.acceptedByName,
+        acceptorPhone: (acceptor && acceptor.phone) || "—",
+        matchedAt: s.acceptedAt ? new Date(s.acceptedAt).toLocaleString("en-IN") : "—",
+        startedAt: new Date(s.startedAt).toLocaleString("en-IN"),
+        startedBy: session.fullName
+      };
+      const evs = JSON.parse(localStorage.getItem("winzo_game_started") || "[]");
+      evs.unshift(ev);
+      localStorage.setItem("winzo_game_started", JSON.stringify(evs));
+      if (window.WINZO_SB) {
+        try {
+          await window.WINZO_SB.from("results").upsert({
+            id: ev.id, challenge_id: s.id, game_id: s.gameId || s.id,
+            submitter_uid: session.uid, submitter_name: session.fullName, submitter_phone: session.phone || "—",
+            opponent_uid: s.uid === session.uid ? s.acceptedBy : s.uid,
+            opponent_name: s.uid === session.uid ? s.acceptedByName : s.byName,
+            opponent_phone: (s.uid === session.uid ? (acceptor && acceptor.phone) : (setter && setter.phone)) || "—",
+            game_type: GAME_LABELS[s.gameType] || s.gameType,
+            amount: s.value, room_code: s.roomCode || "—",
+            result: "started", status: "started"
+          });
+        } catch(e) {}
+      }
+      _lastMatchHash = "";
+      window.WinzoAuth.toast("Game started! Admin has been notified.", "success", 4000);
       renderMatchRoom();
     };
 
@@ -654,6 +687,7 @@
         roomCode: match.roomCode || "—",
         result: resultVal,
         proofUrl,
+        screenshotAt: new Date().toLocaleString("en-IN"),
         status: "pending",
         at: new Date().toLocaleString("en-IN")
       });
@@ -698,7 +732,7 @@
       if (f.size > 5*1024*1024) return window.WinzoAuth.toast("File must be under 5 MB.", "error");
       const proofUrl = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
       const reports = window.WinzoReports.get();
-      const rep = { id:"r_"+Date.now(), reporterUid:session.uid, reporterName:session.fullName, opponent:document.getElementById("rOpponent").value.trim(), details:document.getElementById("rDetails").value.trim(), proofUrl, status:"pending", at:Date.now() };
+      const rep = { id:"r_"+Date.now(), reporterUid:session.uid, reporterName:session.fullName, opponent:document.getElementById("rOpponent").value.trim(), details:document.getElementById("rDetails").value.trim(), proofUrl, screenshotAt:new Date().toLocaleString("en-IN"), status:"pending", at:Date.now() };
       reports.push(rep);
       window.WinzoReports.save(reports);
       window.WinzoReports.saveOne(rep);

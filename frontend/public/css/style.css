@@ -155,6 +155,9 @@ h3 { font-size: 1.25rem; }
 }
 .nav-links a:hover, .nav-links a.active { color: var(--accent); }
 .nav-actions { display: flex; gap: 12px; align-items: center; }
+.wz-helpline { display:flex; align-items:center; gap:6px; color:#25D366; font-size:13px; font-weight:600; white-space:nowrap; text-decoration:none; padding:6px 12px; border-radius:20px; border:1px solid rgba(37,211,102,0.35); background:rgba(37,211,102,0.08); transition:background .2s; }
+.wz-helpline:hover { background:rgba(37,211,102,0.18); }
+.wz-helpline i { font-size:16px; }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -1205,6 +1208,7 @@ body { padding-bottom: 72px; }
   .nav-links { display: none; }
   .nav-actions .btn span { display: none; }
   .nav-actions .btn { padding: 10px 14px; font-size: 12px; }
+  .wz-helpline span { display: none; }
   .nav-inner { gap: 12px; }
 
   /* Typography */
