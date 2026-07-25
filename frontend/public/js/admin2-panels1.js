@@ -27,7 +27,7 @@ PANELS.overview = function() {
   <div class="a2-stat-card"><div class="a2-stat-icon green"><i class="ph-fill ph-currency-inr"></i></div><div><div class="a2-stat-val" style="color:var(--success)">${rupee(totalDep)}</div><div class="a2-stat-lbl">Total Deposits</div></div></div>
   <div class="a2-stat-card"><div class="a2-stat-icon red"><i class="ph-fill ph-arrow-up-right"></i></div><div><div class="a2-stat-val" style="color:var(--danger)">${rupee(totalWd)}</div><div class="a2-stat-lbl">Total Withdrawals</div></div></div>
   <div class="a2-stat-card"><div class="a2-stat-icon blue"><i class="ph-fill ph-sword"></i></div><div><div class="a2-stat-val" style="color:#007AFF">${sets.length}</div><div class="a2-stat-lbl">Open Challenges</div></div></div>
-  <div class="a2-stat-card"><div class="a2-stat-icon"><i class="ph-fill ph-trophy"></i></div><div><div class="a2-stat-val">${STATIC.tournaments.length}</div><div class="a2-stat-lbl">Tournaments</div></div></div>
+  <div class="a2-stat-card"><div class="a2-stat-icon"><i class="ph-fill ph-trophy"></i></div><div><div class="a2-stat-val">${getLiveTournaments().length}</div><div class="a2-stat-lbl">Tournaments</div></div></div>
   <div class="a2-stat-card"><div class="a2-stat-icon red"><i class="ph-fill ph-warning-octagon"></i></div><div><div class="a2-stat-val" style="color:var(--danger)">${pendingReports}</div><div class="a2-stat-lbl">Pending Reports</div></div></div>
 </div>
 <div class="a2-panel-head"><h2><i class="ph ph-users"></i> Registered Users</h2></div>
@@ -67,15 +67,16 @@ ${deposits.length ? deposits.map(function(d,i){
 
 // ── Setup: All Tournaments ────────────────────────────────────
 PANELS["all-tournaments"] = function() {
+  const tournaments = getLiveTournaments();
   return `<div class="a2-panel-head"><h2><i class="ph ph-trophy"></i> All Tournaments</h2></div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Game</th><th>Entry</th><th>Prize Pool</th><th>Players</th><th>Status</th><th>Start</th></tr></thead><tbody>
-${STATIC.tournaments.map(function(t,i){return `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.game}</td><td>${rupee(t.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(t.prize)}</td><td>${t.players}</td><td>${statusBadge(t.status)}</td><td>${t.start}</td></tr>`;}).join("")}
+${tournaments.map(function(t,i){return `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.game}</td><td>${rupee(t.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(t.prize)}</td><td>${t.players}</td><td>${statusBadge(t.status)}</td><td>${t.start}</td></tr>`;}).join("")}
 </tbody></table></div>`;
 };
 
 // ── Setup: Running Tournaments ────────────────────────────────
 PANELS["running-tournaments"] = function() {
-  const running = STATIC.tournaments.filter(function(t){return t.status==="running";});
+  const running = getLiveTournaments().filter(function(t){return t.status==="running";});
   return `<div class="a2-panel-head"><h2><i class="ph ph-play-circle"></i> Running Tournaments</h2><span class="badge badge-blue">${running.length} Live</span></div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Game</th><th>Entry</th><th>Prize Pool</th><th>Players</th><th>Start</th><th>Action</th></tr></thead><tbody>
 ${running.length ? running.map(function(t,i){return `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.game}</td><td>${rupee(t.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(t.prize)}</td><td>${t.players}</td><td>${t.start}</td><td><button class="btn btn-secondary" style="padding:6px 12px;font-size:11px;"><i class="ph ph-stop-circle"></i> Stop</button></td></tr>`;}).join("") : emptyRow(8,"No running tournaments.")}
@@ -143,7 +144,7 @@ PANELS["add-game"] = function() {
 };
 
 PANELS["view-tournament-games"] = function() {
-  const tg = STATIC.games.filter(function(g){return g.type==="tournament";});
+  const tg = getLiveGames().filter(function(g){return g.type==="tournament";});
   return `<div class="a2-panel-head"><h2><i class="ph ph-list-star"></i> Tournament Games</h2></div>
 <div class="a2-table-wrap"><table class="a2-table"><thead><tr><th>#</th><th>Name</th><th>Entry Fee</th><th>Prize Pool</th><th>Max Players</th><th>Status</th></tr></thead><tbody>
 ${tg.map(function(g,i){return `<tr><td>${i+1}</td><td><strong>${g.name}</strong></td><td>${rupee(g.entry)}</td><td style="color:var(--accent);font-weight:700">${rupee(g.prize)}</td><td>${g.players}</td><td>${statusBadge(g.status)}</td></tr>`;}).join("")}
@@ -214,10 +215,15 @@ PANELS["review-kyc"] = function() {
 
   function kycRow(u, i) {
     var viewBtn = u.kycKey
-      ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminViewKyc('${u.kycKey}')"><i class="ph ph-eye"></i> View Doc</button>`
+      ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminViewKyc('${u.kycKey}')"><i class="ph ph-eye"></i> Front</button>`
       : u.kycUrl
-        ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminShowDocModal('${u.kycUrl}')"><i class="ph ph-eye"></i> View Doc</button>`
+        ? `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="adminShowDocModal('${u.kycUrl}')"><i class="ph ph-eye"></i> Front</button>`
         : `<span style="color:var(--text-muted);font-size:12px;">Not uploaded</span>`;
+    var backBtn = u.kycBackKey
+      ? `<button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="adminViewKyc('${u.kycBackKey}')"><i class="ph ph-identification-card-reverse"></i> Back</button>`
+      : u.kycBackUrl
+        ? `<button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="adminShowDocModal('${u.kycBackUrl}')"><i class="ph ph-identification-card-reverse"></i> Back</button>`
+        : ``;
     var statusBadgeHtml = u.kycVerified
       ? `<span class="badge badge-green">Approved</span>`
       : u.kycRejected
@@ -233,7 +239,7 @@ PANELS["review-kyc"] = function() {
       <td>${u.phone||"—"}</td>
       <td><span class="badge badge-yellow">${u.kycType||"—"}</span></td>
       <td id="kyc-badge-${u.uid}">${statusBadgeHtml}</td>
-      <td>${viewBtn}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">${viewBtn}${backBtn}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;">${actions}</td>
     </tr>`;
   }
@@ -253,7 +259,7 @@ PANELS["review-kyc"] = function() {
     </div>
   </div>
   <div class="a2-table-wrap"><table class="a2-table">
-    <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>KYC Type</th><th>Status</th><th>Doc</th><th>Actions</th></tr></thead>
+    <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>KYC Type</th><th>Status</th><th>Documents</th><th>Actions</th></tr></thead>
     <tbody>${rows.length ? rows.join("") : emptyRow(7,"No users registered yet.")}</tbody>
   </table></div>`;
 };

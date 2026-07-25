@@ -18,13 +18,14 @@ async function sbFetch(table, order) {
 function mapUser(r) {
   return { uid:r.uid, fullName:r.full_name, phone:r.phone, email:r.email,
     kycType:r.kyc_type, kycUrl:r.kyc_url, kycKey:r.kyc_key||null,
+    kycBackUrl:r.kyc_back_url||null, kycBackKey:r.kyc_back_key||null,
     kycVerified:r.kyc_verified, chips:r.chips||0, wallet:r.chips||0,
     createdAt:r.created_at };
 }
 function mapSet(r) {
   return { id:r.id, gameId:r.game_id, uid:r.uid, byName:r.by_name, value:r.value,
     gameType:r.game_type, acceptedBy:r.accepted_by, acceptedByName:r.accepted_by_name,
-    acceptedAt:r.accepted_at, roomCode:r.room_code, at:r.at };
+    acceptedAt:r.accepted_at, roomCode:r.room_code, startedAt:r.started_at||null, at:r.at };
 }
 function mapDeposit(r) {
   return { id:r.id, uid:r.uid, user:r.user_name, userPhone:r.user_phone,
@@ -40,6 +41,13 @@ function mapReport(r) {
   return { id:r.id, reporterUid:r.reporter_uid, reporterName:r.reporter_name,
     opponent:r.opponent, details:r.details, proofUrl:r.proof_url,
     status:r.status, at:r.created_at };
+}
+function mapResult(r) {
+  return { id:r.id, challengeId:r.challenge_id, gameId:r.game_id,
+    submitterUid:r.submitter_uid, submitterName:r.submitter_name, submitterPhone:r.submitter_phone,
+    opponentUid:r.opponent_uid, opponentName:r.opponent_name, opponentPhone:r.opponent_phone,
+    gameType:r.game_type, amount:r.amount, roomCode:r.room_code,
+    result:r.result, proofUrl:r.proof_url, screenshotAt:r.screenshot_at||null, status:r.status, at:r.created_at };
 }
 
 // ── Live readers (Supabase-first, localStorage fallback) ──────
@@ -68,11 +76,17 @@ async function getLiveReportsAsync() {
   if (data) { const mapped = data.map(mapReport); localStorage.setItem("winzo_reports", JSON.stringify(mapped)); return mapped; }
   try { return JSON.parse(localStorage.getItem("winzo_reports") || "[]"); } catch(e) { return []; }
 }
+async function getLiveResultsAsync() {
+  const data = await sbFetch("results", "created_at");
+  if (data) { const mapped = data.map(mapResult); localStorage.setItem("winzo_results", JSON.stringify(mapped)); return mapped; }
+  try { return JSON.parse(localStorage.getItem("winzo_results") || "[]"); } catch(e) { return []; }
+}
 
 // Sync wrappers — panels call these, await result, then re-render
 function getLiveUsers()      { try { return JSON.parse(localStorage.getItem("winzo_users") || "[]"); } catch(e) { return []; } }
 function getLiveSets()       { try { return JSON.parse(localStorage.getItem("winzo_sets_global") || "[]"); } catch(e) { return []; } }
 function getLiveReports()    { try { return JSON.parse(localStorage.getItem("winzo_reports") || "[]"); } catch(e) { return []; } }
+function getLiveResults()    { try { return JSON.parse(localStorage.getItem("winzo_results") || "[]"); } catch(e) { return []; } }
 function getLiveDeposits()   { try { return JSON.parse(localStorage.getItem("winzo_deposits") || "[]"); } catch(e) { return []; } }
 function getLiveWithdrawals(){ try { return JSON.parse(localStorage.getItem("winzo_withdraws") || "[]"); } catch(e) { return []; } }
 function getLiveBlacklist()  { try { return JSON.parse(localStorage.getItem("winzo_blacklist") || "[]"); } catch(e) { return []; } }
@@ -113,7 +127,10 @@ function saveLiveUsers(arr) {
 }
 
 // ── Auto-sync on panel load ───────────────────────────────────
-window.syncAndReload = async function(panelKey, panelLabel) {
+window.syncAndReload = function(panelKey, panelLabel) {
+  // Render immediately from localStorage — no wait
+  window.loadPanel(panelKey, panelLabel);
+  // Then fetch fresh data from Supabase in background and re-render
   const loaders = {
     "view-all-users":        getLiveUsersAsync,
     "review-kyc":            getLiveUsersAsync,
@@ -131,25 +148,33 @@ window.syncAndReload = async function(panelKey, panelLabel) {
     "deposit-report":        getLiveDepositsAsync,
     "recent-withdrawals":    getLiveWithdrawalsAsync,
     "all-withdrawals":       getLiveWithdrawalsAsync,
-    "search-screenshots":    getLiveReportsAsync,
+    "search-screenshots":    function() { return Promise.all([getLiveResultsAsync(), getLiveReportsAsync()]); },
     "blacklisted":           getLiveBlacklistAsync,
     "view-all-games":        getLiveGamesAsync,
-    "overview":              async function() { await Promise.all([getLiveUsersAsync(), getLiveSetsAsync(), getLiveDepositsAsync(), getLiveWithdrawalsAsync(), getLiveReportsAsync()]); }
+    "all-tournaments":       getLiveTournamentsAsync,
+    "running-tournaments":   getLiveTournamentsAsync,
+    "overview":              function() { return Promise.all([getLiveUsersAsync(), getLiveSetsAsync(), getLiveDepositsAsync(), getLiveWithdrawalsAsync(), getLiveReportsAsync()]); }
   };
-  if (loaders[panelKey]) await loaders[panelKey]();
-  window.loadPanel(panelKey, panelLabel);
+  if (loaders[panelKey]) {
+    loaders[panelKey]().then(function() {
+      // Only re-render if user is still on the same panel
+      if (document.getElementById("topbar-title").textContent === (panelLabel || panelKey)) {
+        window.loadPanel(panelKey, panelLabel);
+      }
+    }).catch(function(){});
+  }
 };
 
-// ── Static seeds (games & tournaments — no live source yet) ──
+// ── Static seeds (fallback only — Supabase is source of truth) ──
 const STATIC = {
   games: [
-    { id:"g1", name:"Full Game",      type:"regular",    entry:50,  prize:90,   status:"active", players:4, created:"2026-01-01" },
-    { id:"g2", name:"1 Goti",         type:"regular",    entry:20,  prize:36,   status:"active", players:2, created:"2026-01-01" },
-    { id:"g3", name:"2 Goti",         type:"regular",    entry:30,  prize:54,   status:"active", players:2, created:"2026-01-01" },
-    { id:"g4", name:"3 Goti",         type:"regular",    entry:40,  prize:72,   status:"active", players:2, created:"2026-01-01" },
-    { id:"g5", name:"Ulta",           type:"regular",    entry:50,  prize:90,   status:"active", players:2, created:"2026-01-01" },
-    { id:"g6", name:"1 Six",          type:"regular",    entry:20,  prize:36,   status:"active", players:2, created:"2026-01-01" },
-    { id:"g7", name:"Snake & Ladder", type:"regular",    entry:20,  prize:36,   status:"active", players:2, created:"2026-01-01" },
+    { id:"g1", name:"Full Game",      type:"regular", entry:50,  prize:90,   status:"active", players:4, created:"2026-01-01" },
+    { id:"g2", name:"1 Goti",         type:"regular", entry:20,  prize:36,   status:"active", players:2, created:"2026-01-01" },
+    { id:"g3", name:"2 Goti",         type:"regular", entry:30,  prize:54,   status:"active", players:2, created:"2026-01-01" },
+    { id:"g4", name:"3 Goti",         type:"regular", entry:40,  prize:72,   status:"active", players:2, created:"2026-01-01" },
+    { id:"g5", name:"Ulta",           type:"regular", entry:50,  prize:90,   status:"active", players:2, created:"2026-01-01" },
+    { id:"g6", name:"1 Six",          type:"regular", entry:20,  prize:36,   status:"active", players:2, created:"2026-01-01" },
+    { id:"g7", name:"Snake & Ladder", type:"regular", entry:20,  prize:36,   status:"active", players:2, created:"2026-01-01" },
   ],
   tournaments: [
     { id:"t1", name:"Full Game Grand Prix",   game:"Full Game",      entry:100, prize:5000,  players:"48/64", status:"running",   start:"2026-07-04 10:00" },
@@ -158,6 +183,28 @@ const STATIC = {
     { id:"t4", name:"Ulta Championship",      game:"Ulta",           entry:100, prize:8000,  players:"64/64", status:"completed", start:"2026-07-03 10:00" },
   ],
 };
+
+// ── Tournaments (Supabase-first, localStorage fallback) ───────
+function getLiveTournaments() {
+  try { return JSON.parse(localStorage.getItem("winzo_tournaments") || "null") || STATIC.tournaments.slice(); }
+  catch { return STATIC.tournaments.slice(); }
+}
+async function getLiveTournamentsAsync() {
+  const data = await sbFetch("tournaments", "created_at");
+  if (data && data.length) {
+    const mapped = data.map(function(r){ return { id:r.id, name:r.name, game:r.game, entry:r.entry, prize:r.prize, players:r.players, status:r.status, start:r.start_time }; });
+    localStorage.setItem("winzo_tournaments", JSON.stringify(mapped));
+    return mapped;
+  }
+  return getLiveTournaments();
+}
+function saveLiveTournaments(arr) {
+  localStorage.setItem("winzo_tournaments", JSON.stringify(arr));
+  if (!window.WINZO_SB) return;
+  window.WINZO_SB.from("tournaments").upsert(arr.map(function(t){
+    return { id:t.id, name:t.name, game:t.game, entry:t.entry||0, prize:t.prize||0, players:t.players||"0/0", status:t.status||"upcoming", start_time:t.start||null };
+  })).then(function(){});
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 function rupee(n) { return "₹" + Number(n || 0).toLocaleString("en-IN"); }
